@@ -1,0 +1,29 @@
+{
+  "summary": "Iteration 5 verified end-to-end. Backend pytest 9/9 PASSED (profile supplementDetails+trainingDays persist, plan already has dayType + brandedItems, /api/foods/search known+empty, /api/foods/barcode found Milbona 20097776 + not-found 8000000099999, /api/foods/custom insert then barcode found + name search returns it, fridge expiry chip format preserved on save). Frontend Playwright for marco@test.it: Tab Profilo shows supplement-details with select-variant-whey='Whey isolate' + input-brand MyProtein + 💡 tip, select-variant-creatina='Monoidrato Creapure' + input-brand Prozis + 💡 tip; chip-tday-Lunedì/Mercoledì/Venerdì present (training days persisted). Tab Integratori shows 2 supp-detail-* with 'Whey isolate · MyProtein 💡 ...' and 'Monoidrato Creapure · Prozis 💡 ...'. Tab Piano: 7 day-pills with 🏋️ and 😴 emojis, day-type-badge '🏋️ Giorno di allenamento · più carboidrati', day-summary 'Totale: 2950 kcal · da prodotti di marca: 299 kcal (10%)'; Lunedì colazione branded-colazione='Fiocchi d'avena integrali (Quaker) · 60 g · 223 kcal · 8% del giorno' and branded-spuntino_mattina Bresaola (Rigamonti) 50g 76 kcal 3% — matches brief exactly. Tab Frigo: input-fridge-expiry present and expiry-alert present with text '⏳ In scadenza: 400 g macinato di bovino (tra 2 gg).'. Ricerca prodotto: 'yogurt greco' → food-results visible, btn-open-scanner NOT visible; 'xqzprodottoinesistente123' → btn-open-scanner visible → click opens barcode-modal; input-barcode 20097776 + btn-lookup-barcode → modal closes, food-picked='✓ Milbona: 165 kcal/100g · P 20.5 C 1.5 G 8.5'. Unknown code (8000000xxxxxx dynamic) → custom-food-form appears, filled name/brand/kcal/protein/carbs/fats + btn-save-custom-food → modal closes with food-picked shown; backend GET /api/foods/barcode/{code} returns found:true and search by name returns the entry (verified in pytest). Regressione: tab-shopping/recipes/water/weight/mood/calendar/photo all open without JS errors (2 benign 401 on /api/files GET without ?auth= — image preload race, non-blocking).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iteration5.py",
+    "/app/test_reports/pytest/iteration5.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "server.py /api/foods/custom: upsert key uses {name, brand} when code is missing — if brand is empty string this may collide with other brand-less entries sharing the same name across users. Low risk but consider including created_by in the key for userscoped custom foods.",
+    "BarcodeScanner lookup swallows errors silently (modal just stays on custom-food-form regardless of why OFF failed); add toast on network/HTTP error to differentiate 'not found' from 'offline'.",
+    "/api/foods/search returns up to 8 custom + N OFF without deduping by barcode — if a custom food has the same code as an OFF entry both appear.",
+    "/api/files 401 appears in console when PhotoDiary mounts and reaches an entry whose image path 404'd previously; consider lazy-loading images only after a successful entry fetch or hide broken thumbnails to keep console clean."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iteration5.py"
+  ],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "test_credentials": "marco@test.it / test1234 (Clean Bulking plan ready, whey isolate MyProtein + creatina Creapure Prozis, trainingDays Lun/Mer/Ven, macinato in scadenza). Admin admin@nutriviva.it / admin123.",
+  "seed_data_creation": "Added one TEST_CustomFood_* via pytest (upsert, left in custom_foods for traceability) and one TEST_UIProdotto_* via UI test with a time-based 8000000xxxxxx barcode. No permanent changes to marco's fridge or supplementDetails (all mutations rolled back by try/finally in tests).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "iteration5 regression lives in /app/backend/tests/test_iteration5.py (9 tests, deterministic except OFF 20097776 which skips if OFF is down). Plan response is {plan:{days:[...]}} not {days:[...]} — remember to unwrap. Barcode scanner cannot use camera in headless; always use input-barcode + btn-lookup-barcode. btn-open-scanner only appears when ricerca returns 0 results and query length>=3; previous queries' results clear after a short debounce. Marco's seeded plan contains Fiocchi d'avena Quaker (Lunedì colazione) and Bresaola Rigamonti (Lunedì spuntino) as brandedItems — do not regenerate the plan."
+}

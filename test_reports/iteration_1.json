@@ -1,0 +1,42 @@
+{
+  "summary": "Smoke-tested NutriViva end-to-end: registration, login, 4-step onboarding, profile save, AI plan generation (7 days x 6 meals via gpt-6-luna, ~46s), plan viewer (daily/weekly), meal alternative, weight check-in, mood check-in with hunger=5 tip (snack cetriolo/mandorle shown), supplements and calendar tabs. All core flows working. Compatibility endpoint returned no warning for Chetogenica+massa but this was not explicitly tested in UI.",
+  "tested_scope": ["frontend", "backend", "auth", "integration"],
+  "passed": [
+    "POST /api/auth/register returns token",
+    "GET /api/auth/me with Bearer token",
+    "PUT /api/profile saves onboarding data (medications must be string, not list)",
+    "POST /api/plan/generate returns 7 days x 6 meals (~46s)",
+    "GET /api/plan returns persisted plan",
+    "POST /api/plan/alternative returns alternative meal (uses {day, mealKey} payload)",
+    "POST /api/checkins/weight {weight:number}",
+    "POST /api/checkins/mood requires mood, hunger, energy, digestion, serenity; hunger=5 returns tip",
+    "UI: register -> onboarding redirect",
+    "UI: 4-step onboarding completes, lands on /app dashboard",
+    "UI: login existing user shows persisted plan with 7 day pills and 6 meal cards",
+    "UI: tab-daily-view / tab-weekly-view toggle works",
+    "UI: weight check-in save works (btn-save-weight)",
+    "UI: mood check-in with hunger=5 displays mood-tip containing anti-hunger snack suggestion",
+    "UI: tabs supplements and calendar render (select-new-diet, btn-change-diet, input-new-duration present)"
+  ],
+  "failed": [
+    {
+      "area": "Onboarding -> auto plan generation",
+      "issue": "After clicking btn-finish-onboarding the dashboard shows 'Nessun piano ancora' and a 502 Cloudflare toast appears. The initial plan auto-generation triggered right after onboarding appears to hit a proxy timeout (plan generation takes ~46s). User must click 'Genera il mio piano' manually. The problem statement expected the plan to be generated automatically after onboarding.",
+      "evidence": "Screenshot /tmp/05_dashboard.png shows Cloudflare 'origin returned invalid or incomplete response' toast; dashboard empty state with Genera button. Direct POST /api/plan/generate works fine (46s).",
+      "priority": "MEDIUM"
+    },
+    {
+      "area": "Compatibility endpoint",
+      "issue": "POST /api/compatibility with {diet:'chetogenica', goals:['massa']} returns {warnings: []} with no warning. Problem statement expects an incompatibility warning for keto + muscle-gain.",
+      "evidence": "curl response: {\"warnings\":[]}",
+      "priority": "LOW"
+    }
+  ],
+  "action_items": [
+    "Investigate why post-onboarding automatic plan generation does not complete (Cloudflare 502 toast). Likely frontend fetch timing out before 46s AI call completes, or request is being retried. Consider showing a loading state and increasing client timeout, or triggering generation lazily via the existing 'Genera il mio piano' button.",
+    "Review /api/compatibility rule set to ensure chetogenica + massa (or other incompatible combos) yield a warning, as the Onboarding warning depends on it."
+  ],
+  "success_rate": {"backend": "100%", "frontend": "90%"},
+  "retest_needed": true,
+  "full_testing_deferred": true
+}

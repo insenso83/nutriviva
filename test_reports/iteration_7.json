@@ -1,0 +1,30 @@
+{
+  "summary": "Iteration 7 fully verified. Backend pytest 10/10 PASSED (/app/backend/tests/test_iteration7.py in 28s): targetWeight persistence + merge semantics (age preserved after partial PUT), progress-photos POST+GET+DELETE + /api/files auth 200, PUT /api/shopping-list editing + POST /api/shopping-list/add inserts into 'Da ricomprare' category, /api/supplements/stock math (1000 g pkg · 30 g dose · 4/sett opened 10 gg fa = 58 totalDays / ~48 daysLeft, low=False; opened 50 gg fa => low=True + daysLeft≤14), mealPreferences+foodLikes+foodDislikes persist on profile, /api/foods/label OCR on a PIL-generated nutritional panel returns kcal≈163 and protein≈17, /api/plan/custom-meal returns bilanced meal with key='pranzo', custom=true, items[] (Mercoledì), calendar fields dietActive/dietStartDate/dietEndDate persisted on marco and dietActive falsy for new user. Frontend Playwright (marco@test.it): Tab Peso saves target 75 kg -> weight-goal-progress + weight-goal-eta visible ('25 novembre 2026 · stima standard: -0.50 kg/settimana'), progress-photos panel renders. Tab Frigo lists 8 deplete chips. Tab Spesa: input+btn-shop-add appends a new category and persists via PUT; shop-remove cleans up. Tab Integratori: supplement-stock card shows whey MyProtein '7 giorni · finisce il 16/10/2026' with stock-low-whey + top banner-low-stock '🧂 In esaurimento: MyProtein (7 gg)', creatina Prozis 99 giorni (ok). Tab Calendario: diet-status '⏳ Inizia il lunedì 12 ottobre', 21 .nv-diet-on cells visibili e 3 .nv-diet-free (sabato come freeMeal). Tab Piano: 6 btn-custom-meal-* presenti, input-custom-ingredients-colazione accetta 'mozzarella, pomodori, cetrioli e pane' senza perdere il focus (focus_ok=True). Regressione tutti i tab (Riepilogo, Ricette, Acqua, Umore, Foto Pasto, Profilo) aprono senza errori JS.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_iteration7.py",
+    "/app/test_reports/pytest/iteration7.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "server.py PUT /api/profile now uses model_dump(exclude_unset=True) — merge semantics confirmed working for partial updates (age preserved after {targetWeight:75.5} PUT). The regression noted in iteration_6 is RESOLVED.",
+    "ShoppingListPanel.boughtToFridge sends the FULL merged array via PUT /api/profile (fridgeItems) rather than a dedicated /fridge/add endpoint — fine today since PUT is merge-safe, but still a client-side race if two tabs edit concurrently. Consider /api/fridge/add batching endpoint, similar to /shopping-list/add.",
+    "SupplementsPanel: stock cards and the Dashboard low-stock banner both call GET /api/supplements/stock separately on mount — small duplicated LLM-free call but worth hoisting to Dashboard state and passing down.",
+    "BarcodeScanner.readLabel: sends the raw dataURL image_base64 up to 8 MB; backend to_jpeg_b64 downscales to 1600 px — ok, but add client-side size cap + user feedback if the file is >10 MB to avoid long waits.",
+    "WeightGoalChart.slope: linear regression with <7 points is noisy; the code already falls back to a standard estimate (+0.25 or -0.5 kg/sett) when direction is wrong — correct, but the Math.sign(0) edge case means a perfectly flat 2-point history (same weight) uses fallback. Acceptable.",
+    "server.py /api/foods/label returns the AI JSON verbatim including readable:false — ok, but there is no persistence; good because BarcodeScanner saves via /foods/custom afterwards."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iteration7.py",
+    "/app/test_reports/iteration_7.json",
+    "/app/test_reports/pytest/iteration7.xml"
+  ],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "test_credentials": "marco@test.it / test1234. Marco profile dietActive/dietStartDate(2026-10-12)/dietEndDate(2026-12-06) restored by the marco_backup pytest fixture. Admin admin@nutriviva.it / admin123.",
+  "seed_data_creation": "Added one progress-photos entry on marco (auto-deleted at end of test). A fresh throwaway user test_it7_<hex>@test.it was registered for supplement stock + dietActive-inactive assertions (no restore needed, remains in DB). marco.targetWeight is left set to 75.5 (from backend test) / 75 (from UI test) — not in the required restore list; main agent can reset via UI if desired.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Iteration 7 regression file: /app/backend/tests/test_iteration7.py (10 tests, ~28s). All new features from the iteration 7 brief work end-to-end: target weight + ETA + goal line in chart, progress photos CRUD, fridge deplete->shopping 'Da ricomprare', shopping editing + PUT persistence + bought-to-fridge, supplement stock math + low banner, meal preferences + foodLikes/foodDislikes in prompt, nutrition label OCR, /plan/custom-meal, calendar nv-diet-on/nv-diet-free + activate/stop/schedule. The AI endpoints (custom-meal 10-30s, label 15-20s, shopping, fridge/recipe) remain slow — bake in 90s timeouts. PUT /api/profile is now MERGE-safe thanks to model_dump(exclude_unset=True) — the iteration 6 hazard is gone.",
+  "rca of the issue": "No bugs found."
+}

@@ -1,0 +1,43 @@
+{
+  "summary": "Iteration 3 validated the 5 new NutriViva features end-to-end: (0) onboarding/profile conditions saved + echoed back; (1) Plan day-swap (select-swap-day + btn-swap-day) works in-memory AND persists after full page reload via PUT /api/plan; (2) btn-meal-reminders turns the button text into 'Promemoria attivi' and shows success toast without JS errors; (3) Water tab: +/-, glass-N click, goal +/- all mutate water-count and persist across reload via POST/GET /api/water, water-done appears at goal; (4) PhotoPanel: setInputFiles with a real Unsplash food JPEG triggers photo-loading then photo-result with dish name, Compatibile badge, kcal and macros (Insalata mediterranea, 550 kcal, P18/C65/G25). Regression: Frigo, Spesa, Ricette, Integratori, Peso, Umore, Calendario all open without errors. Backend pytest 4/4 PASSED (profile conditions, water get/post, plan PUT swap persistence, meal/photo vision via gpt-6-luna).",
+  "tested_scope": ["backend", "frontend", "integration"],
+  "passed": [
+    "pytest test_new_features.py: 4/4 (profile.conditions, water CRUD, plan PUT swap, meal/photo)",
+    "POST /api/meal/photo returns full JSON {dish, compatible, verdict, calories, protein, carbs, fats, advice}",
+    "PUT /api/plan persists swapped days (verified via GET after)",
+    "GET/POST /api/water persists glasses and goal, clamps negatives to 0",
+    "PUT /api/profile stores and returns conditions='celiachia'",
+    "UI: day-swap Lunedì<->Giovedì persists after reload",
+    "UI: btn-meal-reminders -> 'Promemoria attivi' + toast, no JS errors",
+    "UI: water-count +/- , glass-N click sets value, goal +/- works, water-done shown at goal",
+    "UI: Foto Pasto upload (setInputFiles Unsplash JPEG) -> photo-loading -> photo-result rendered in ~20s",
+    "Regression tabs (fridge, shopping, recipes, supplements, weight, mood, calendar) load error-free",
+    "Zero pageerror / console error (only auth-check 401 before login, expected)"
+  ],
+  "failed": [],
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "critical_code_review_comments": [
+    "WaterPanel: potential race condition — if user clicks btn-water-plus before GET /water promise resolves, local state (0) overwrites server state via POST. Minor; consider disabling buttons until initial fetch completes or using functional setState with latest server value.",
+    "MealPlanViewer.enableReminders uses setInterval 20s + Notification API; works but polling-based. Notifications are denied in headless as expected and gracefully fall back to toast — no error.",
+    "server.py build_prompt has two rules numbered '2.' (typo in numbering). Content correct, cosmetic only."
+  ],
+  "test_report_links": [
+    "/app/backend/tests/test_new_features.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [],
+  "updated_files": [
+    "/app/backend/tests/test_new_features.py"
+  ],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "test_credentials": "marco@test.it / test1234 (seeded with conditions='intolleranza al lattosio' and 7-day plan)",
+  "seed_data_creation": "Created ephemeral user test_cond_<uuid>@test.it via /api/auth/register to test conditions persistence (not cleaned up — negligible).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "All 5 new iteration-3 features verified. Backend tests live at /app/backend/tests/test_new_features.py (requires REACT_APP_BACKEND_URL env). Avoid re-generating marco's plan to save ~60s LLM time; it is already in 'ready' state. meal/photo call takes ~15-25s via gpt-6-luna vision."
+}

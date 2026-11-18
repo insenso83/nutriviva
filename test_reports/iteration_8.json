@@ -1,0 +1,29 @@
+{
+  "summary": "Iteration 8 full stack validation complete. Backend pytest 6/6 PASSED (/app/backend/tests/test_iteration8.py in 35.7s): POST /api/supplements/whey/to-shopping adds 'Proteine Isolate MyProtein' qty '1000 g' to 'Integratori' category and persists via GET /api/shopping-list; GET/POST/DELETE /api/favorites CRUD + idempotent upsert on same title + 400 on missing title; POST /api/plan/eat-out on Giovedì (pranzo, 'pizza margherita e una birra media') -> eatenMeal flagged eatOut=true title starts with 'Fuori casa:', ONLY later keys (spuntino_pomeriggio, cena, pre_nanna) get rebalanced=true, previous meals (colazione, spuntino_mattina) stay identical, totals recomputed, persists via second GET /api/plan; POST /api/cron/reminders rejects missing/bad Bearer with 401, accepts WEBHOOK_CRON_SECRET with 200, returns {duplicate:true} on same X-Webhook-Id, and NO 'stock alerts failed'/'start reminders failed'/Traceback entries appeared in /var/log/supervisor/backend.err.log during the 3s wait after the background task fired. Frontend Playwright (marco@test.it): Integratori tab -> btn-supp-to-shop-whey click -> toast 'Aggiunto alla lista della spesa (Integratori)'; Spesa tab -> 'Integratori' category shown with 'Proteine Whey isolate MyProtein 1000 g'. Piano Pasti -> tab-daily-view -> day-pill-3 (Giovedì 😴) renders meal-pranzo as 'Fuori casa: pizza margherita e birra media' 1050 kcal with tag-eatout-pranzo (🍽️ Mangiato fuori casa) and tag-rebalanced-spuntino_pomeriggio, tag-rebalanced-cena, tag-rebalanced-pre_nanna all present; colazione & spuntino_mattina have NO rebalanced tag -> rebalance semantics correct. btn-fav-colazione click -> heart becomes fill-[#c85a32]; second click -> back to text-muted-foreground. Ricette tab -> favorites-list renders favorite-{id} card ('Gnocchi con bresaola e spinaci · 650 kcal · P40 C90 G12 · 200 g gnocchi, ...'); btn-remove-fav-{id} click removes the card from the DOM. Calendario tab -> start-reminder-note present ('🔔 La sera prima alle 20:00 riceverai una notifica con il menù del primo giorno…') because marco dietStartDate=2026-10-12 (scheduled). Regressione: Riepilogo, Frigo, Peso, Acqua, Umore, Foto Pasto, Profilo tabs opened sin console error (only 401 noise before login).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_iteration8.py",
+    "/app/test_reports/pytest/iteration8.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "server.py send_start_reminders / send_stock_alerts gate on local hour (==20 or ==9) and minute<15; the /api/cron/reminders endpoint calls them unconditionally in a BackgroundTask -- correct, they self-skip off-hours. Good defensive design, no action needed.",
+    "server.py add_to_shopping dedupe uses case-insensitive match on name only (ignoring qty/reparto) and inserts the Integratori category at index 0 -- fine for current UX. If supp_shop_name later returns a shorter string (e.g. without variant) duplicates would still slip past; consider normalising on (reparto, name_lower).",
+    "POST /api/favorites: fav id is uuid5(user_id + title), making the title the natural key -- consistent with upsert on {user_id,title}; however the UI shows items/calories from the first save, so saving the same title with newer macros is a no-op from the user's point of view. Minor UX, consider using $set on all meal fields.",
+    "POST /api/plan/eat-out hard-codes the meal order list and uses order.index() -- if a plan was generated with an unknown key (e.g. 'merenda') the endpoint would 400 or wipe downstream. Add a safeguard that falls back to the meals' positional index inside the day.",
+    "frontend MealPlanViewer toggleFav passes the full `shown` object (which may be the alternate 'alt' meal) to POST /api/favorites -- correct, this is what the user sees. Good."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iteration8.py",
+    "/app/test_reports/iteration_8.json",
+    "/app/test_reports/pytest/iteration8.xml"
+  ],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "test_credentials": "marco@test.it / test1234 (dietActive true, start 2026-10-12, end 2026-12-06 preserved). Admin admin@nutriviva.it / admin123. WEBHOOK_CRON_SECRET read from /app/backend/.env.",
+  "seed_data_creation": "Giovedì of marco's plan has been eat-out rebalanced by the pytest run (pranzo='Fuori casa: pizza margherita e birra media', later meals rebalanced). Martedì was already rebalanced previously by main agent via curl. Favorites: one 'Gnocchi con bresaola e spinaci' favorite was present at start (not seeded by test); the UI test REMOVED it at the end — main agent may want to re-add if the demo expects it. The pytest creates a TEST_FavMeal_<hex> favorite and deletes it in-test (clean).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Iteration 8 regression: /app/backend/tests/test_iteration8.py (6 tests, ~36s). Covers supp->shopping, favorites CRUD, eat-out rebalance (uses Giovedì — switch to another day if re-running against a fresh plan). The eat-out endpoint takes 15-40s due to LLM; pytest timeout 120s. The cron endpoint is a 2xx ack with BackgroundTasks; the test sleeps 3s and scans /var/log/supervisor/backend.err.log for 'stock alerts failed'/'start reminders failed'/'Traceback' markers appended after request time. Frontend Piano daily view uses tab-daily-view + day-pill-{0..6} (0=Lunedì, 3=Giovedì). Favorite hearts live in btn-fav-{mealKey} inside the meal-{mealKey} card (daily view only).",
+  "rca of the issue": "No bugs found. All 4 new features (supplements -> shopping manual + auto cron, eat-out rebalance, favorites heart + Ricette list, start-reminder-note on scheduled diet) work end-to-end on both backend and UI."
+}

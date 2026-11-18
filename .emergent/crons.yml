@@ -1,0 +1,16 @@
+crons:
+  - name: push-reminders
+    description: "Invia le notifiche push dei pasti e degli integratori dovuti ogni 15 minuti"
+    cron: "*/15 * * * *"
+    # Cron endpoints must ack 2xx immediately; enqueue/background the actual work.
+    endpoint: "{{BASE_URL}}/api/cron/reminders"
+    method: POST
+    enabled: true
+  - name: weekly-summary
+    description: "Ogni domenica alle 19:00 avvisa gli utenti che il riepilogo settimanale è pronto"
+    cron: "0 19 * * 0"
+    timezone: "Europe/Rome"
+    # Cron endpoints must ack 2xx immediately; enqueue/background the actual work.
+    endpoint: "{{BASE_URL}}/api/cron/weekly"
+    method: POST
+    enabled: true

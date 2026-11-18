@@ -1,0 +1,23 @@
+{
+  "summary": "Validated the 5 new NutriViva features end-to-end with marco@test.it: Fridge quick-edit (add + save), Shopping list auto-generated grouped by reparto (5 groups, items toggleable), Recipes light (3 cards, expand on click), Supplement reminders (enable toast + time inputs + taken toggles), and Plan export PDF (view switches to weekly, window.print invoked, zero JS errors). Backend smoke checks on /api/plan, /api/shopping-list, /api/recipes/light all 200 with expected shape.",
+  "tested_scope": ["frontend", "backend", "auth", "integration"],
+  "passed": [
+    "POST /api/auth/login marco@test.it returns valid JWT",
+    "GET /api/shopping-list -> 200 with {categories:[{reparto, items:[{name,qty}]}]} (5 reparti)",
+    "GET /api/recipes/light -> 200 with {recipes:[...]} (>=3 ricette, titolo/kcal/protein/carbs/fats/ingredients/steps)",
+    "GET /api/plan -> 200 (status ready)",
+    "UI login marco@test.it/test1234 -> /app dashboard, no errors",
+    "Tab Frigo: input-fridge-edit + btn-add-fridge-edit aggiungono item; btn-save-fridge persiste (toast success)",
+    "Tab Spesa: btn-generate-shopping genera shopping-list raggruppata (5 reparti); shop-item-0-0 cliccabile e toggla stato",
+    "Tab Ricette: recipes-list render 3 recipe-* card; click su recipe-0 espande ingredienti/preparazione",
+    "Tab Integratori: btn-enable-reminders mostra toast 'Promemoria attivati!'; 2 time-* input + 2 btn-supplement-toggle-* visibili e cliccabili",
+    "Tab Piano -> btn-export-pdf: nessun errore JS, vista cambia a Settimanale (tab-weekly-view attivo), window.print chiamato",
+    "Zero errori JS / pageerror / console.error durante l'intero flusso"
+  ],
+  "failed": [],
+  "action_items": [],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "retest_needed": false,
+  "full_testing_deferred": true,
+  "notes": "btn-generate-recipes e btn-save-regen-fridge non stressati per evitare timeout AI (~30-60s), ma gli endpoint sottostanti sono validati da iterazione 1. Tabs Peso/Umore già validati in iterazione 1."
+}

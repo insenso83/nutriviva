@@ -1,0 +1,31 @@
+{
+  "summary": "Iteration 4 verified end-to-end: all 6 new feature groups green. Backend pytest 11/11 PASSED (push public-key, reminders PUT/GET, invalid timezone 400, cron 401 without auth, cron 200 with WEBHOOK_CRON_SECRET + duplicate dedup via X-Webhook-Id, fridge/check flags mozzarella/latte for lattose intolerance, meal/photo stores image + diary entry, GET /api/diary totals, /api/files/{path}?auth= serves 200 image & 401 without auth, DELETE /api/diary soft-deletes, old-day diary empty, profile weight change persists + checkin). Frontend Playwright: login → tab-profile edit weight/meds + multi-select training (powerlifting+crossfit) → save → reload persists; tab-fridge add '400 g macinato di bovino' + '200 g mozzarella' chips rendered correctly; save triggers /api/fridge/check (condition-ok resolved — see minor note); regression on tab-plan/shopping/recipes/water/weight/mood/calendar/supplements/photo all open; btn-meal-reminders and btn-enable-reminders clicked with Notification denied (headless) → graceful toast 'Notifiche non consentite', zero JS errors / pageerrors captured.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iteration4.py",
+    "/app/backend/tests/test_new_features.py",
+    "/app/test_reports/pytest/iteration4.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "FridgePanel.check() depends on LLM determinism — on repeated runs, mozzarella + 'intolleranza al lattosio' sometimes returned 0 warnings (condition-ok) despite backend path being correct; consider adding a deterministic client-side keyword prefilter (lattosio→latte/mozzarella/yogurt/formaggio; glutine→pane/pasta/farina) before/alongside the LLM call to guarantee the warning for obvious cases.",
+    "/api/files uses db.diary.find_one by image_path — if two users share the same storage path (unlikely with uuid) auth check would still be OK, but index on image_path + user_id is recommended for lookup speed; current path format {APP_NAME}/meals/{user_id}/{uuid}.{ext} already scopes per-user, good.",
+    "server.py:291 still has two rules numbered '2.' and '2b.' (cosmetic, non-blocking).",
+    "ProfilePanel.save does not call check-weight when weight unchanged — OK; however the UI does not warn if user clears all training chips (empty trainingType). Minor.",
+    "PhotoDiary passes JWT via query string ?auth=<token> — fine for GET and matches the backend accept-list, but the token appears in server/access logs. Low priority (short-lived JWT, HTTPS)."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iteration4.py"
+  ],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "test_credentials": "marco@test.it / test1234 (seeded conditions='intolleranza al lattosio', plan ready). Admin admin@nutriviva.it / admin123. WEBHOOK_CRON_SECRET read from /app/backend/.env in test.",
+  "seed_data_creation": "No new seed users created. Added+removed temporary fridge items (400 g macinato di bovino, 200 g mozzarella) via UI during the lactose warning test and restored. Updated marco weight by +0.3 kg and left; medications field cleared. Diary entry created by meal/photo test was soft-deleted by the delete test.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend regression lives in /app/backend/tests/test_new_features.py (iter3, 4/4) and /app/backend/tests/test_iteration4.py (iter4, 11/11). Both reuse marco@test.it. meal/photo call ~15-30s via gpt-6-luna; fridge/check ~5-15s. Cron secret is read from /app/backend/.env. Push notifications are permission-denied in headless Chromium — only verify endpoint shapes and absence of JS errors. If re-adding critical fridge items during tests, remember to clean them up to keep marco's lactose-safe seed."
+}

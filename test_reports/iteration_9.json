@@ -1,0 +1,39 @@
+{
+  "summary": "Iteration 9: tested the meal-specific food lists (MEAL_FOODS), the 'Ho solo questi ingredienti' option (onlyThese), the 'Oggi niente allenamento' button (rest-day), supplement moments and creatine loading, the nutritionist diet, account deletion, and the fridge deduction regression. Backend: 9/9 pytest pass. Colazione custom meal added only albume and frutta secca, no meat. The colazione alternative had no meat. onlyThese cena returned only pane, pomodori and cetrioli, with added=[] and gaps, nextMealTip and optional filled. Rest-day on Venerdì: 2950 -> 2521 kcal, carbs 385 -> 262, persisted. Invalid day returns 400. Profile moments, loadingDone/loadingStart and hasNutritionist/nutritionistDiet persist. DELETE /auth/me logs the user out and login then returns 401. Fridge deduction works. Frontend tested end to end. Custom meal with onlyThese shows custom-gaps-cena. Skip training on Lunedì: pill changes to 😴, the tag appears, kcal 2950 -> 2512, persists after reload. Onboarding step 4 has all 7 moment chips with 'Decide l'app' exclusive, plus creatine loading and the nutritionist section, and saves correctly. Profile edits save. Delete account: cancel and confirm both work, user is redirected to /login and login fails with 401. btn-meal-eaten deducts from the fridge (toast 'Scalato dal frigo: 60 g avena', avena 500 -> 440 g). All 12 tabs load with 0 JS errors. Marco's plan, fridge, supplementDetails and eaten list were restored from backup and verified identical.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "DELETE /api/auth/me", "issue": "Race with plan generation running in the background: when a user deletes the account right after onboarding (which starts generation at /app?generate=1), _generate_plan_task later upserts db.plans for the deleted user_id. This left an orphan plan document (reproduced; I deleted the orphan I created). Fix: in _generate_plan_task use update_one without upsert, or check that the user still exists before writing. Progress-photo objects in object storage are also not deleted."},
+      {"endpoint": "POST /api/meals/eaten", "issue": "The LLM fridge deduction is sometimes inconsistent. In the backend test, 'removed' listed '2 uova' but the fridge still showed '8 pz uova'. The oats and the apple were deducted correctly. Consider validating the result against the 'removed' list, or computing the deduction for simple 'N pz' items in code."},
+      {"endpoint": "POST /api/plan/custom-meal (onlyThese)", "issue": "nextMealTip is often generic or about the current meal ('puoi aggiungere facoltativamente 120 g di bresaola...') instead of a concrete tip for the next meal. Tighten the prompt by passing the next meal's key and title."},
+      {"endpoint": "POST /api/plan/rest-day", "issue": "No server-side guard: it can be called on a day that is already 'riposo' or skippedTraining, and each call cuts calories and carbs again. There is also no endpoint or UI to undo it (go back to a training day)."},
+      {"endpoint": "POST /api/auth/login", "issue": "Playbook check: no brute-force lockout after 5 failed attempts. bcrypt $2b$ hash and httpOnly cookie are OK."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Piano - custom meal form", "issues": ["The 'Annulla' button in custom-meal-form has no data-testid", "The onlyThese checkbox state is shared across all meals and is not reset when the form is opened for another meal"]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_iteration9.py", "/app/test_reports/pytest/pytest_iter9.xml"],
+  "action_items": [
+    "Prevent the orphan plan doc after account deletion: no upsert in _generate_plan_task, or check that the user exists",
+    "Optionally block rest-day on days already marked riposo, and add an undo",
+    "Optionally make the fridge deduction more reliable for simple 'N pz' items",
+    "Optional: brute-force lockout on login"
+  ],
+  "critical_code_review_comments": [
+    "server.py is 1363 lines; split it into routers (auth, plan, profile, fridge, supplements)",
+    "The onlyThese keyword filter (first 5 letters of words with 4+ letters) can miss synonyms or plurals (e.g. 'uova' vs 'uovo' -> 'uova'/'uovo' OK, but 'mela' vs 'mele' differ at the 4th letter, so a valid item could be wrongly moved to optional)",
+    "custom-meal is not persisted by the backend; the frontend persists it via PUT /plan. Rest-day persists server-side. The two approaches are inconsistent but both work"
+  ],
+  "updated_files": ["/app/backend/tests/test_iteration9.py"],
+  "success_rate": {"backend": "100% (9/9)", "frontend": "100% of the requested flows"},
+  "test_credentials": "marco@test.it / test1234, admin@nutriviva.it / admin123 (neither modified nor deleted)",
+  "seed_data_creation": "Temporary TEST users test_del_*@example.com (API) and test_ui_bd83ee@example.com (UI) were created and deleted through the delete-account feature. I removed the orphan plan doc of the UI user. Marco's plan, fridge, supplementDetails and eaten list were restored from backup and verified identical.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Regression: /app/backend/tests/test_iteration9.py (run with -n 0, ~2 min; it restores marco's plan via a fixture and the fridge in a finally block). Rest-day test uses Venerdì; UI used Lunedì (day-pill-0). onlyThese UI: btn-custom-meal-cena -> input-custom-ingredients-cena -> chk-only-these-cena -> btn-compose-meal-cena -> custom-gaps-cena (~30-60s). Marco's Martedì already has a pre-existing eat-out pranzo. Back up /api/plan and /api/profile before any mutation."
+}

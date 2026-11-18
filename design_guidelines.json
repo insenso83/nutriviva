@@ -1,0 +1,297 @@
+{
+  "project_name": "NutriViva - App Intelligente di Dieta & Nutrizione",
+  "language": "it-IT",
+  "app_type": "hybrid_fullstack (health/diet SaaS web app)",
+  "design_philosophy": {
+    "archetype": "ARCHETYPE 1: ORGANIC & EARTHY meets MODERN MEDITERRANEAN BOTANICAL",
+    "theme_preference": "Light theme primary (calm warm ivory/herb background), with sleek high-contrast natural dark slate for depth. User requested: 'Moderno, fresco e salutare con verdi/naturali'",
+    "tone": "Warm, scientific, encouraging, non-dogmatic, crisp Italian wellness culinary style",
+    "fusion_influences": [
+      "Italian botanical herbarium typography and warm olive oil & sage palettes",
+      "Swiss high-density metabolic tracking and clear structured macro visualizers",
+      "Tactile kitchen pantry index card interaction with zero digital slop"
+    ]
+  },
+  "typography": {
+    "font_family_heading": "Cabinet Grotesk, Outfit, Clash Display, system-ui, sans-serif",
+    "font_family_body": "Plus Jakarta Sans, Inter, system-ui, sans-serif",
+    "font_family_accent_mono": "IBM Plex Mono, Menlo, monospace",
+    "font_cdn_import": "https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap",
+    "scale": {
+      "h1": "text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-[#163323]",
+      "h2": "text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-[#163323]",
+      "h3": "text-xl sm:text-2xl font-semibold text-[#1e4430]",
+      "h4": "text-lg sm:text-xl font-semibold text-[#274b37]",
+      "body": "text-base leading-relaxed text-[#33463c]",
+      "small": "text-sm text-[#5d7568]",
+      "caption": "text-xs font-mono uppercase tracking-widest text-[#6c8678]"
+    }
+  },
+  "colors": {
+    "palette": {
+      "forest_deep": "#122b1e",
+      "forest_primary": "#19442b",
+      "forest_emerald": "#22633e",
+      "sage_light": "#e8f2eb",
+      "sage_soft": "#f2f7f4",
+      "sage_border": "#d2e3d7",
+      "warm_bone": "#fbfbf8",
+      "warm_canvas": "#f7f7f2",
+      "sun_gold": "#e9a834",
+      "warm_terracotta": "#c85a32",
+      "light_olive": "#809c48",
+      "text_main": "#15241b",
+      "text_muted": "#556b5f",
+      "text_on_dark": "#f7faf8",
+      "card_bg": "#ffffff",
+      "card_border": "#e3ede6"
+    },
+    "macro_indicators": {
+      "protein": { "bg": "#eaf5ef", "text": "#1b6b3e", "border": "#9bd3b2", "label": "Proteine" },
+      "carbs": { "bg": "#fef7ea", "text": "#a26715", "border": "#f4d093", "label": "Carboidrati" },
+      "fats": { "bg": "#fbf2eb", "text": "#9a431c", "border": "#e8b49e", "label": "Grassi sani" },
+      "calories": { "bg": "#eff7f5", "text": "#1a5b67", "border": "#a3d5db", "label": "Kcal" }
+    },
+    "alerts": {
+      "urgent_update": "#b93815",
+      "urgent_badge": "#feedec",
+      "success": "#1b6b3e",
+      "warning": "#bb6b00"
+    }
+  },
+  "surfaces_and_borders": {
+    "card": "bg-white/95 rounded-2xl border border-[#dce9e0] shadow-[0_4px_24px_rgba(20,50,30,0.04)] hover:shadow-[0_8px_30px_rgba(20,50,30,0.08)] transition-all duration-200",
+    "glass_header": "bg-[#fbfbf8]/90 backdrop-blur-xl border-b border-[#dce9e0] z-50",
+    "badge_primary": "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#e8f2eb] text-[#19442b] border border-[#d2e3d7]",
+    "badge_warning": "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#fff4e5] text-[#9a4b00] border border-[#fed7aa]",
+    "input_field": "rounded-xl border border-[#cde0d4] bg-white px-4 py-2.5 text-sm text-[#15241b] focus:border-[#22633e] focus:ring-2 focus:ring-[#22633e]/20 outline-none transition-all"
+  },
+  "layout_structure": {
+    "grid_modes": {
+      "dashboard_bento": "grid grid-cols-1 md:grid-cols-12 gap-6",
+      "hero_split": "grid grid-cols-1 lg:grid-cols-12 gap-8 items-center",
+      "meal_grid_7days": "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4",
+      "meal_timeline_6meals": "flex flex-col gap-3.5"
+    },
+    "header_spec": {
+      "type": "Fixed glassmorphism bar",
+      "height": "h-20",
+      "elements": [
+        "Brand Logo (NutriViva with leaf-and-grain icon)",
+        "Tab Navigation (Profilo & Parametri, Piano Pasti 7 Giorni, Frigo & Dispensa, Check-in Peso/Umore, Integratori & Farmaci)",
+        "Quick Action Button ('Genera Nuovo Piano' / 'Esporta PDF')"
+      ]
+    }
+  },
+  "image_urls": {
+    "hero_fresh_bowl": {
+      "category": "Hero & Overview Header",
+      "description": "Ciotola fresca e bilanciata con verdure di stagione, avocado e proteine pulite",
+      "url": "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzB8MHwxfHNlYXJjaHwxfHxmcmVzaCUyMGhlYWx0aHklMjBmb29kJTIwYm93bCUyMHZlZ2V0YWJsZXN8ZW58MHx8fHwxNzkxNDUwMDc0fDA&ixlib=rb-4.1.0&q=85"
+    },
+    "fridge_meal_prep": {
+      "category": "Frigo & Dispensa / Meal Prep",
+      "description": "Tagliere di ingredienti freschi pronti per il meal prepping e dispensa organizzata",
+      "url": "https://images.unsplash.com/photo-1466637574441-749b8f19452f?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzZ8MHwxfHNlYXJjaHwxfHxoZWFsdGh5JTIwbWVhbCUyMHByZXAlMjBraXRjaGVuJTIwaW5ncmVkaWVudHN8ZW58MHx8fHwxNzkxNDUwMDc1fDA&ixlib=rb-4.1.0&q=85"
+    },
+    "meal_containers_prep": {
+      "category": "Pasti Programmati Settimanali",
+      "description": "Contenitori di alimenti salutari preparati e suddivisi con precisione",
+      "url": "https://images.unsplash.com/photo-1606858374191-c18040e98ad7?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzZ8MHwxfHNlYXJjaHwyfHxoZWFsdGh5JTIwbWVhbCUyMHByZXAlMjBraXRjaGVuJTIwaW5ncmVkaWVudHN8ZW58MHx8fHwxNzkxNDUwMDc1fDA&ixlib=rb-4.1.0&q=85"
+    },
+    "light_recipe_dessert": {
+      "category": "Ricette Light & Dessert Fit",
+      "description": "Tiramisù light o bowl con yogurt greco ad alto contenuto proteico, frutti di bosco e granella",
+      "url": "https://images.unsplash.com/photo-1530259152377-3a014e1092e0?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2Njd8MHwxfHNlYXJjaHwyfHxncmVlayUyMHlvZ3VydCUyMGRlc3NlcnQlMjBoZWFsdGh5JTIwZm9vZHxlbnwwfHx8fDE3OTE0NTAwNzR8MA&ixlib=rb-4.1.0&q=85"
+    },
+    "healthy_grain_bowl": {
+      "category": "Pranzo Bilanciato / Ricarica Carbo",
+      "description": "Piatto colorato con carboidrati complessi, verdure e semi per la ricarica",
+      "url": "https://images.unsplash.com/photo-1547592180-85f173990554?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzB8MHwxfHNlYXJjaHw0fHxmcmVzaCUyMGhlYWx0aHklMjBmb29kJTIwYm93bCUyMHZlZ2V0YWJsZXN8ZW58MHx8fHwxNzkxNDUwMDc0fDA&ixlib=rb-4.1.0&q=85"
+    }
+  },
+  "required_functional_modules": {
+    "1_profile_onboarding_form": {
+      "mandatory_fields": [
+        "Età (anni)",
+        "Sesso biologico (Uomo / Donna / Altro)",
+        "Peso attuale (kg)",
+        "Altezza (cm)"
+      ],
+      "optional_fields": [
+        "Circonferenze / Centimetri (vita, fianchi, cosce, torace, braccia in cm)",
+        "Tipologia di lavoro (Sedentario, In piedi leggero, Attivo, Molto pesante)",
+        "Tipo di allenamento (Sala pesi / Bodybuilding, Calisthenics, Corsa / Cardio, Crossfit, Nuoto, Yoga / Pilates, Camminata)",
+        "Frequenza allenamenti (1-2 volte/sett, 3-4 volte/sett, 5-6 volte/sett, Tutti i giorni)"
+      ]
+    },
+    "2_goals_multi_select": {
+      "description": "Selezione multipla compatibile con filtri intelligenti",
+      "options": [
+        { "id": "massa", "label": "Mettere massa muscolare", "tag": "Ipertrofia" },
+        { "id": "perdere_peso", "label": "Perdere peso", "tag": "Deficit" },
+        { "id": "asciugarsi", "label": "Asciugarsi / Definizione", "tag": "Cut" },
+        { "id": "mantenere", "label": "Mantenere peso & ricomposizione", "tag": "Normocalorica" },
+        { "id": "perdere_cm", "label": "Perdere centimetri localizzati", "tag": "Focus body-comp" },
+        { "id": "patologie", "label": "Gestire patologie (es. diabete, tiroide, reflusso)", "tag": "Clinico" },
+        { "id": "intolleranze", "label": "Gestione intolleranze (lattosio, glutine, nichel, etc.)", "tag": "Salute" },
+        { "id": "digestione", "label": "Migliorare digestione & gonfiore", "tag": "Microbiota" },
+        { "id": "longevita", "label": "Longevità & Anti-aging cellulare", "tag": "Anti-ossidante" },
+        { "id": "prevenzione", "label": "Prevenzione cardiovascolare & metabolica", "tag": "Benessere" },
+        { "id": "energia", "label": "Aumentare energia & focus mentale", "tag": "Vitalità" },
+        { "id": "recupero", "label": "Migliorare recupero muscolare", "tag": "Sport" },
+        { "id": "etica", "label": "Scelta etica per gli animali", "tag": "Etica" },
+        { "id": "sostenibilita", "label": "Sostenibilità & basso impatto carbonio", "tag": "Eco-friendly" },
+        { "id": "religione", "label": "Norme religiose (Halal, Kosher, etc.)", "tag": "Tradizione" },
+        { "id": "sonno_umore", "label": "Ottimizzare sonno profondo & umore", "tag": "Circadiano" }
+      ]
+    },
+    "3_diet_type_selector": {
+      "options": [
+        "Chetogenica",
+        "Mediterranea",
+        "DASH",
+        "Flexitariana",
+        "MIND",
+        "Low Carb",
+        "Dukan",
+        "A Zona",
+        "Digiuno Intermittente (16/8)",
+        "Vegetariana",
+        "Vegana",
+        "Paleo",
+        "Bulking Tradizionale",
+        "Ipercalorica",
+        "Clean Bulking"
+      ]
+    },
+    "4_fridge_pantry_generator": {
+      "description": "Indicare ciò che è già presente in casa per creare pasti anti-spreco",
+      "pantry_tags_input": "Input a tag/ricerca rapida per cibi presenti (uova, petto di pollo, riso basmati, yogurt greco, spinaci, avena, olio evo, parmigiano, etc.)",
+      "action": "Genera Piano Pasti su misura integrando il frigo esistente"
+    },
+    "5_six_meal_structure": {
+      "meals": [
+        { "key": "colazione", "name": "1. Colazione", "time": "07:30 - 08:30" },
+        { "key": "spuntino_mattina", "name": "2. Spuntino Mattina", "time": "10:30 - 11:00" },
+        { "key": "pranzo", "name": "3. Pranzo", "time": "13:00 - 14:00" },
+        { "key": "spuntino_pomeriggio", "name": "4. Spuntino Pomeriggio", "time": "16:30 - 17:30" },
+        { "key": "cena", "name": "5. Cena", "time": "20:00 - 21:00" },
+        { "key": "pre_nanna", "name": "6. Spuntino Pre-Nanna", "time": "22:30 - 23:00" }
+      ],
+      "view_modes": ["Vista Giornaliera Dettagliata", "Vista Settimanale 7 Giorni"],
+      "interactive_features": [
+        "Tasto 'Richiedi Alternativa Pasto' per ogni singolo pasto con 3 alternative istantanee",
+        "Scheda 'Ricetta Light' (es. Tiramisù Fit con yogurt greco, pancake di albume d'avena, mug cake proteica)",
+        "Indicazione giorni liberi / pasti sgarro concordati",
+        "Programmazione 'Ricarica Carboidrati' (Refeed Day per atleti o diete cicliche)"
+      ]
+    },
+    "6_diet_calendar_and_change": {
+      "duration_tracker": "Durata programmata della dieta (es. 4, 8, 12 settimane con data inizio e countdown)",
+      "change_diet_modal": "Possibilità di passare a una nuova fase dietetica con ricalcolo macro"
+    },
+    "7_mandatory_checkins": {
+      "weight_checkin": {
+        "rule": "Aggiornamento peso obbligatorio ogni 4 giorni",
+        "visual_badge": "Badge di stato / Alert visivo con countdown 'Prossimo check peso: tra X giorni' o 'Aggiornamento Peso Richiesto Oggi'",
+        "weight_history_chart": "Grafico andamento peso corporeo (Recharts) con linea obiettivo"
+      },
+      "mood_checkin": {
+        "rule": "Check umore e livelli di fame/energia ogni 5 giorni",
+        "scale": "Emoji o selettore 1-5 (Energia vitale, Qualità digestione, Serenità, Livello di fame nervosa)",
+        "visual_badge": "Countdown e prompt contestuale"
+      }
+    },
+    "8_supplements_and_medications": {
+      "items": [
+        { "name": "Proteine in Polvere (Whey / Isolate / Vegetali)", "timing": "Post-allenamento o a colazione/spuntino", "dosage": "30g con acqua" },
+        { "name": "Creatina Monoidrato", "timing": "Tutti i giorni alla stessa ora con pasto/carbo", "dosage": "5g" },
+        { "name": "Aminoacidi Essenziali / BCAA", "timing": "Intra-workout o nei digiuni prolungati", "dosage": "1g per 10kg peso" },
+        { "name": "Mass Gainer", "timing": "Nei giorni di ipercalorica/bulking lontano dai pasti", "dosage": "Dose da calcolo calorico" },
+        { "name": "Farmaci Personali & Vitamine (D3, Omega 3, Magnesio)", "timing": "Mattino a stomaco pieno / Sera prima di dormire", "dosage": "Come da prescrizione medica" }
+      ],
+      "features": "Promemoria orari configurabili con toggle 'Assunto oggi'"
+    }
+  },
+  "component_hierarchy": [
+    {
+      "name": "AppHeader",
+      "path": "src/components/AppHeader.js",
+      "description": "Navigation bar con logo, selettore tab principale, badge stato check-in peso/umore, CTA rapida"
+    },
+    {
+      "name": "UserProfileSection",
+      "path": "src/components/UserProfileSection.js",
+      "description": "Form completo dati obbligatori + opzionali + centimetri + lavoro + allenamento"
+    },
+    {
+      "name": "GoalsSelector",
+      "path": "src/components/GoalsSelector.js",
+      "description": "Selettore multi-obiettivo visivo con tag categorie e combinazioni coerenti"
+    },
+    {
+      "name": "DietTypeSelector",
+      "path": "src/components/DietTypeSelector.js",
+      "description": "Griglia visiva dei 15 tipi di dieta con spiegazione macro e profilo ideale"
+    },
+    {
+      "name": "FridgeInventory",
+      "path": "src/components/FridgeInventory.js",
+      "description": "Gestore dinamico dispensa/frigo per piatti anti-spreco e ricette rapide"
+    },
+    {
+      "name": "MealPlanViewer",
+      "path": "src/components/MealPlanViewer.js",
+      "description": "Pianificatore 6 pasti al giorno (Giornaliero o 7 Giorni), alternative, ricette fit (es. Tiramisù yogurt greco), ricarica carbo, pasto libero"
+    },
+    {
+      "name": "CalendarDurationCard",
+      "path": "src/components/CalendarDurationCard.js",
+      "description": "Calendario durata dieta, countdown, switch tipo dieta e pianificazione fasi"
+    },
+    {
+      "name": "CheckinAlertsModal",
+      "path": "src/components/CheckinAlertsModal.js",
+      "description": "Controllo scadenze: peso ogni 4 giorni e umore ogni 5 giorni con grafici progressivi"
+    },
+    {
+      "name": "SupplementsTracker",
+      "path": "src/components/SupplementsTracker.js",
+      "description": "Timing dosaggi e orari per proteine, creatina, EAA, gainer e farmaci personali"
+    }
+  ],
+  "testing_attributes": {
+    "rule": "Tutti i pulsanti, campi form, tab e indicatori informativi chiave DEVONO avere attributo data-testid univoco in kebab-case",
+    "examples": [
+      "data-testid='input-age'",
+      "data-testid='input-weight'",
+      "data-testid='input-height'",
+      "data-testid='input-sex'",
+      "data-testid='btn-goal-massa'",
+      "data-testid='btn-diet-mediterranea'",
+      "data-testid='input-fridge-item'",
+      "data-testid='btn-generate-plan'",
+      "data-testid='tab-daily-view'",
+      "data-testid='tab-weekly-view'",
+      "data-testid='btn-meal-alternative-colazione'",
+      "data-testid='card-recipe-light-tiramisu'",
+      "data-testid='btn-weight-checkin-modal'",
+      "data-testid='btn-mood-checkin-modal'",
+      "data-testid='btn-supplement-toggle-creatine'"
+    ]
+  },
+  "instructions_to_main_agent": [
+    "Usa JavaScript (.js) con Tailwind CSS e le primitive Radix/Lucide già installate.",
+    "Implementa la UI interamente in lingua ITALIANA con stile chiaro, professionale e incoraggiante.",
+    "Il look deve essere 'Moderno, fresco e salutare con verdi/naturali' (sfondo caldo avorio/erba, verde bosco profondo, verde salvia, accenti solari e terracotta).",
+    "Non usare gradienti violenti o sfondi scuri cyberpunk. Mantieni un design luminoso, chiaro, medico-nutrizionale ma caldo e appetitoso.",
+    "Includi i dati precompilati realistici (es. utente esempio Marco Rossi, 30 anni, 78kg, obiettivo massa pulita / ricarica carbo, dieta mediterranea avanzata con frigo già popolato) per rendere l'esperienza subito interattiva e pronta all'uso senza dover completare 20 campi prima di vedere il piano.",
+    "Garantisci il funzionamento del cambio tra vista 'Giornaliera' e vista 'Settimanale (7 giorni)'.",
+    "Per ogni pasto (colazione, spuntino mattina, pranzo, spuntino pomeriggio, cena, pre-nanna) offri il tasto per sostituire con un'alternativa caloricamente equivalente.",
+    "Metti in evidenza la ricetta fit speciale (es. Tiramisù con yogurt greco e biscotti d'avena) con ingredienti, calorie e macro dettagliati.",
+    "Implementa gli avvisi dei check-in obbligatori: banner dinamico per il peso (ogni 4 giorni) e per l'umore/energia (ogni 5 giorni) con simulatore interattivo per registrare i valori.",
+    "Aggiungi la sezione integratori (Creatina, Whey, BCAA, Gainer) e farmaci con spiegazione chiara del timing ideale rispetto ai pasti.",
+    "Tutti i componenti interattivi devono avere il data-testid specificato per i test end-to-end."
+  ]
+}

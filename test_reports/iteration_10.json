@@ -1,0 +1,35 @@
+{
+  "summary": "Iteration 10: tested the nutrition label scan feature. Backend: 3 pytest pass and 1 is skipped. The skip is because GET /api/foods/custom does not exist; I checked in MongoDB instead that nothing is saved to custom_foods. POST /api/foods/label on /tmp/label.png returned {name:'Yogurt Greco 0%', brand:'Fage', kcal:54, protein:10, carbs:3, fats:0, unitGrams:170, estimated:[]} in about 3s. An invalid image returns 400 and a call without auth returns 401/403. Frontend, Fridge tab: the modal opens and the upload works. The preview image and form appear with all fields correct. Because unitGrams=170, the form starts with unit pz, qty 1, totals 170 g / 92 kcal. 2 pz x 170 g gives 340 g, 184 kcal, P 34, C 10.2. 0.5 kg gives 500 g, 270 kcal. 300 g gives 162 kcal, P 30, C 9, G 0. Confirm is disabled when name or qty is empty. The chip '300 g Yogurt greco 0% (Fage) [54 kcal/100g, P 10 C 3 G 0]' shows 'tot 162 kcal · P 30 C 9 G 0' and is still there after a reload. I tested estimated fields with a second label image (/tmp/label2.png, kcal only, no macros). The AI estimated protein, carbs and fats: those 3 'stimato' badges and the note appeared. Editing a field removed its badge. Shopping tab: btn-shop-scan-label opens the modal and the confirm text is 'Acquistato: aggiungi al frigo'. The item 'TEST_Yogurt bianco' was removed from the shopping list and stayed removed after reload. The toast read 'Yogurt greco 0% aggiunto al frigo · \"TEST_Yogurt bianco\" segnato come acquistato'. The product appeared in the fridge as '1 pz ... , 170 g/pz' with tot 92 kcal. Fridge regression: manual add, save and 'Esaurito' (deplete, adds the item to the shopping list) work. The barcode API returns 200. The barcode scanner button only appears after a search with no results, which is by design. I did not open the camera. No JS page errors. Marco's fridge and shopping list were backed up and restored; they match the backup exactly.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/foods/label", "issue": "The LLM JSON is returned unvalidated (no Pydantic response model and no number coercion). If the model returns strings or nulls, the frontend falls back to 0 silently. There is also no limit on image size."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Label scanner modal (Fridge)", "issues": ["The 'fixed inset-0 bg-black/50' backdrop covers only the main content area, not the full viewport. The header, alerts bar and tabs stay undimmed and clickable. An ancestor probably has a transform or animation class that creates a containing block. Render the modal through a portal (createPortal to document.body) or use the shadcn Dialog."]},
+      {"screen": "Shopping - addScanned matching", "issues": ["Matching splits the product name into words longer than 2 characters, so short words like 'con', 'del' or 'gusto' can mark an unrelated item as purchased. Only the first match is removed. Consider stop-words or matching the first significant word."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_iteration10_label.py", "/app/test_reports/pytest/pytest_iter10.xml"],
+  "action_items": [
+    "Render LabelScanner with a portal or shadcn Dialog so the backdrop covers the full viewport",
+    "Optional: validate and coerce the /foods/label response (numbers, estimated list) on the backend",
+    "Optional: add stop-words to the shopping-list name matching in ShoppingListPanel.addScanned"
+  ],
+  "critical_code_review_comments": [
+    "server.py is about 1388 lines; split it into routers",
+    "LabelScanner: when the AI gives unitGrams, the unit defaults to pz with qty 1. That is sensible, but the review request expected unit g. This is OK because the user can change it",
+    "FridgeItemInput chips use key={it}, so 2 identical label chips would collide, and removing one chip removes all duplicates (filter x !== it)"
+  ],
+  "updated_files": ["/app/backend/tests/test_iteration10_label.py"],
+  "success_rate": {"backend": "100% (3/3, 1 skipped)", "frontend": "100% of requested flows"},
+  "test_credentials": "marco@test.it / test1234 (not modified; data restored)",
+  "seed_data_creation": "None persisted. TEST_Yogurt bianco and TEST_zucca plus 2 yogurt chips were created and then fully restored from backup.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Test images: /tmp/label.png (Fage) and /tmp/label2.png (macros missing, gives estimated). The label read takes about 3-10s. Back up marco's /api/profile fridgeItems and /api/shopping-list before running UI flows, then restore them."
+}
