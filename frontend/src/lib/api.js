@@ -18,26 +18,28 @@ const getStoragePrefix = async () => {
 };
 
 const defaultProfile = {
-  age: 30,
-  weight: 75,
-  height: 175,
-  sex: "Uomo",
-  jobType: "Sedentario",
-  trainingFrequency: "3-4 volte/sett",
-  trainingType: "Sala pesi / Bodybuilding",
-  measurements: { vita: "82", fianchi: "98", cosce: "55", torace: "102", braccia: "34" },
-  goals: ["Massa muscolare", "Definizione"],
-  dietType: "Mediterranea bilanciata",
-  fridgeItems: [
-    { name: "Petto di pollo", qty: "500g" },
-    { name: "Riso basmati", qty: "1kg" },
-    { name: "Uova", qty: "6 pezzi" },
-  ],
-  supplements: ["Creatina", "Whey protein"],
+  age: "",
+  weight: "",
+  height: "",
+  sex: "",
+  jobType: "",
+  trainingFrequency: "",
+  trainingType: "",
+  measurements: {
+    vita: "",
+    fianchi: "",
+    cosce: "",
+    torace: "",
+    braccia: "",
+  },
+  goals: [],
+  dietType: "",
+  fridgeItems: [],
+  supplements: [],
   dietActive: false,
-  dietStartDate: "2026-11-17",
-  dietEndDate: "2027-01-11",
-  dietDurationWeeks: 8,
+  dietStartDate: "",
+  dietEndDate: "",
+  dietDurationWeeks: "",
   completed: false,
   onboarding_completed: false,
 };
@@ -50,8 +52,15 @@ const createDayMeals = () => [
     protein: 48.6,
     carbs: 71.3,
     fats: 10.6,
-    items: ["300 g latte scremato", "25 g whey isolate", "80 g fiocchi d'avena", "50 g uovo intero", "60 g confettura light"],
-    recipe: "Cuoci i fiocchi d'avena nel latte, mescolando fino a ottenere un porridge cremoso.",
+    items: [
+      "300 g latte scremato",
+      "25 g whey isolate",
+      "80 g fiocchi d'avena",
+      "50 g uovo intero",
+      "60 g confettura light",
+    ],
+    recipe:
+      "Cuoci i fiocchi d'avena nel latte, mescolando fino a ottenere un porridge cremoso.",
   },
   {
     key: "spuntino_mattina",
@@ -70,7 +79,12 @@ const createDayMeals = () => [
     protein: 53.5,
     carbs: 126.7,
     fats: 41.1,
-    items: ["250 g gnocchi", "200 g hamburger bovino", "100 g carciofi", "10 g olio EVO"],
+    items: [
+      "250 g gnocchi",
+      "200 g hamburger bovino",
+      "100 g carciofi",
+      "10 g olio EVO",
+    ],
     recipe: "Cuoci gli gnocchi in acqua e l'hamburger in padella.",
   },
   {
@@ -90,7 +104,12 @@ const createDayMeals = () => [
     protein: 47.3,
     carbs: 55.6,
     fats: 10.5,
-    items: ["65 g filetto di salmone", "60 g tonno", "85 g fagioli", "25 g riso basmati"],
+    items: [
+      "65 g filetto di salmone",
+      "60 g tonno",
+      "85 g fagioli",
+      "25 g riso basmati",
+    ],
     recipe: "Salmone alla piastra con riso e legumi.",
   },
   {
@@ -108,7 +127,15 @@ const createDayMeals = () => [
 const defaultPlan = {
   notes: "Piano settimanale bilanciato per la massa e definizione muscolare.",
   dailyCalories: 2350,
-  days: ["Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì", "Sabato", "Domenica"].map((dayName, idx) => ({
+  days: [
+    "Lunedì",
+    "Martedì",
+    "Mercoledì",
+    "Giovedì",
+    "Venerdì",
+    "Sabato",
+    "Domenica",
+  ].map((dayName, idx) => ({
     day: dayName,
     dayType: idx % 2 === 0 ? "allenamento" : "riposo",
     totalCalories: 2350,
@@ -118,19 +145,64 @@ const defaultPlan = {
 
 const shoppingPools = [
   [
-    { reparto: "Carne e Pesce", items: [{ name: "Petto di pollo", qty: "600 g" }, { name: "Filetto di salmone", qty: "300 g" }] },
-    { reparto: "Latticini e Uova", items: [{ name: "Yogurt greco 0%", qty: "4 confezioni" }, { name: "Uova fresche", qty: "1 confezione" }] },
-    { reparto: "Dispensa e Cereali", items: [{ name: "Riso basmati", qty: "1 kg" }] },
+    {
+      reparto: "Carne e Pesce",
+      items: [
+        { name: "Petto di pollo", qty: "600 g" },
+        { name: "Filetto di salmone", qty: "300 g" },
+      ],
+    },
+    {
+      reparto: "Latticini e Uova",
+      items: [
+        { name: "Yogurt greco 0%", qty: "4 confezioni" },
+        { name: "Uova fresche", qty: "1 confezione" },
+      ],
+    },
+    {
+      reparto: "Dispensa e Cereali",
+      items: [{ name: "Riso basmati", qty: "1 kg" }],
+    },
   ],
   [
-    { reparto: "Frutta e Verdura", items: [{ name: "Zucchine fresche", qty: "500 g" }, { name: "Spinaci", qty: "400 g" }] },
-    { reparto: "Carne e Pesce", items: [{ name: "Fesa di tacchino", qty: "500 g" }, { name: "Orata sfilettata", qty: "2 filetti" }] },
-    { reparto: "Dispensa e Cereali", items: [{ name: "Fiocchi d'avena", qty: "500 g" }] },
+    {
+      reparto: "Frutta e Verdura",
+      items: [
+        { name: "Zucchine fresche", qty: "500 g" },
+        { name: "Spinaci", qty: "400 g" },
+      ],
+    },
+    {
+      reparto: "Carne e Pesce",
+      items: [
+        { name: "Fesa di tacchino", qty: "500 g" },
+        { name: "Orata sfilettata", qty: "2 filetti" },
+      ],
+    },
+    {
+      reparto: "Dispensa e Cereali",
+      items: [{ name: "Fiocchi d'avena", qty: "500 g" }],
+    },
   ],
   [
-    { reparto: "Latticini e Uova", items: [{ name: "Fiocchi di latte", qty: "2 confezioni" }, { name: "Parmigiano Reggiano", qty: "200 g" }] },
-    { reparto: "Dispensa e Cereali", items: [{ name: "Pasta integrale", qty: "500 g" }, { name: "Gallette di riso", qty: "1 confezione" }] },
-    { reparto: "Frutta e Verdura", items: [{ name: "Mele Golden", qty: "1 kg" }] },
+    {
+      reparto: "Latticini e Uova",
+      items: [
+        { name: "Fiocchi di latte", qty: "2 confezioni" },
+        { name: "Parmigiano Reggiano", qty: "200 g" },
+      ],
+    },
+    {
+      reparto: "Dispensa e Cereali",
+      items: [
+        { name: "Pasta integrale", qty: "500 g" },
+        { name: "Gallette di riso", qty: "1 confezione" },
+      ],
+    },
+    {
+      reparto: "Frutta e Verdura",
+      items: [{ name: "Mele Golden", qty: "1 kg" }],
+    },
   ],
 ];
 
@@ -144,8 +216,17 @@ const initialRecipes = [
     protein: 28,
     carbs: 35,
     fats: 6,
-    ingredients: ["150g yogurt greco 0%", "4 fette biscottate integrali", "Caffè amaro", "Cacao amaro in polvere"],
-    steps: ["Inzuppa le fette biscottate nel caffè.", "Alterna strati di fette e yogurt greco.", "Spolvera con cacao amaro in superficie."],
+    ingredients: [
+      "150g yogurt greco 0%",
+      "4 fette biscottate integrali",
+      "Caffè amaro",
+      "Cacao amaro in polvere",
+    ],
+    steps: [
+      "Inzuppa le fette biscottate nel caffè.",
+      "Alterna strati di fette e yogurt greco.",
+      "Spolvera con cacao amaro in superficie.",
+    ],
   },
   {
     id: "r2",
@@ -154,8 +235,17 @@ const initialRecipes = [
     protein: 30,
     carbs: 40,
     fats: 5,
-    ingredients: ["1 banana matura", "30g whey protein gusto vaniglia", "50g albume d'uovo", "30g fiocchi d'avena triturati"],
-    steps: ["Frulla la banana con l'avena, le whey e l'albume.", "Cuoci il composto in una padella antiaderente ben calda.", "Gira a metà cottura e servi."],
+    ingredients: [
+      "1 banana matura",
+      "30g whey protein gusto vaniglia",
+      "50g albume d'uovo",
+      "30g fiocchi d'avena triturati",
+    ],
+    steps: [
+      "Frulla la banana con l'avena, le whey e l'albume.",
+      "Cuoci il composto in una padella antiaderente ben calda.",
+      "Gira a metà cottura e servi.",
+    ],
   },
 ];
 
@@ -167,8 +257,17 @@ const extraRecipesPool = [
     protein: 22,
     carbs: 42,
     fats: 4,
-    ingredients: ["180g yogurt bianco 0%", "120g farina d'avena", "2 albumi", "1 bustina di lievito per dolci"],
-    steps: ["Mescola lo yogurt con gli albumi e la farina.", "Aggiungi il lievito e versa in uno stampo.", "Cuoci in forno statico a 180°C per 25 minuti."],
+    ingredients: [
+      "180g yogurt bianco 0%",
+      "120g farina d'avena",
+      "2 albumi",
+      "1 bustina di lievito per dolci",
+    ],
+    steps: [
+      "Mescola lo yogurt con gli albumi e la farina.",
+      "Aggiungi il lievito e versa in uno stampo.",
+      "Cuoci in forno statico a 180°C per 25 minuti.",
+    ],
   },
   {
     id: "r4",
@@ -177,8 +276,17 @@ const extraRecipesPool = [
     protein: 25,
     carbs: 45,
     fats: 5,
-    ingredients: ["60g fiocchi d'avena", "150ml latte di mandorla", "15g burro d'arachidi", "Frutti di bosco q.b."],
-    steps: ["Unisci l'avena e il latte in un barattolo.", "Lascia riposare in frigo tutta la notte.", "Guarnisci con burro d'arachidi e frutti di bosco."],
+    ingredients: [
+      "60g fiocchi d'avena",
+      "150ml latte di mandorla",
+      "15g burro d'arachidi",
+      "Frutti di bosco q.b.",
+    ],
+    steps: [
+      "Unisci l'avena e il latte in un barattolo.",
+      "Lascia riposare in frigo tutta la notte.",
+      "Guarnisci con burro d'arachidi e frutti di bosco.",
+    ],
   },
 ];
 
@@ -186,7 +294,8 @@ export const api = {
   supabase,
   get: async (url) => {
     if (url.includes("/auth/me")) {
-      const { data: sessionData, error: sessionErr } = await supabase.auth.getSession();
+      const { data: sessionData, error: sessionErr } =
+        await supabase.auth.getSession();
       if (sessionErr) throw sessionErr;
       const sessionUser = sessionData?.session?.user;
       if (!sessionUser) {
@@ -196,7 +305,10 @@ export const api = {
         data: {
           id: sessionUser.id,
           email: sessionUser.email,
-          name: sessionUser.user_metadata?.name || sessionUser.email?.split("@")[0] || "Utente",
+          name:
+            sessionUser.user_metadata?.name ||
+            sessionUser.email?.split("@")[0] ||
+            "Utente",
         },
       };
     }
@@ -218,18 +330,34 @@ export const api = {
     }
     if (url.includes("/plan")) {
       const savedPlan = localStorage.getItem(`${prefix}_plan`);
-      return { data: { status: "ready", plan: savedPlan ? JSON.parse(savedPlan) : defaultPlan } };
+      return {
+        data: {
+          status: "ready",
+          plan: savedPlan ? JSON.parse(savedPlan) : defaultPlan,
+        },
+      };
     }
     if (url.includes("/summary")) {
-      const profile = JSON.parse(localStorage.getItem(`${prefix}_profile`) || "{}");
-      const currentWeight = profile.weight || 75;
-      const savedDiary = JSON.parse(localStorage.getItem(`${prefix}_diary`) || "[]");
-      const totalPhotoCalories = savedDiary.reduce((acc, curr) => acc + (curr.calories || 0), 0);
+      const profile = JSON.parse(
+        localStorage.getItem(`${prefix}_profile`) || "{}"
+      );
+      const currentWeight = Number(profile.weight) || 0;
+      const savedDiary = JSON.parse(
+        localStorage.getItem(`${prefix}_diary`) || "[]"
+      );
+      const totalPhotoCalories = savedDiary.reduce(
+        (acc, curr) => acc + (curr.calories || 0),
+        0
+      );
       return {
         data: {
           meals: { planned: 42, eaten: 12 },
-          calories: { eatenFromPlan: 4300, fromPhotos: totalPhotoCalories, target: 2350 },
-          weight: { current: currentWeight, start: 76, goal: 72 },
+          calories: {
+            eatenFromPlan: 4300,
+            fromPhotos: totalPhotoCalories,
+            target: 2350,
+          },
+          weight: { current: currentWeight, start: 0, goal: 0 },
           water: { today: 1500, target: 2500 },
         },
       };
@@ -237,7 +365,10 @@ export const api = {
     if (url.includes("/diary")) {
       const saved = localStorage.getItem(`${prefix}_diary`);
       const entries = saved ? JSON.parse(saved) : [];
-      const totalCalories = entries.reduce((acc, curr) => acc + (curr.calories || 0), 0);
+      const totalCalories = entries.reduce(
+        (acc, curr) => acc + (curr.calories || 0),
+        0
+      );
       return { data: { entries, totalCalories } };
     }
     if (url.includes("/favorites")) {
@@ -319,8 +450,14 @@ export const api = {
             protein: 45,
             carbs: 60,
             fats: 12,
-            items: ["200 g petto di pollo", "70 g riso basmati", "150 g zucchine grigliate", "10 g olio EVO"],
-            recipe: "Griglia il petto di pollo e le zucchine, serviti con riso bollito.",
+            items: [
+              "200 g petto di pollo",
+              "70 g riso basmati",
+              "150 g zucchine grigliate",
+              "10 g olio EVO",
+            ],
+            recipe:
+              "Griglia il petto di pollo e le zucchine, serviti con riso bollito.",
           },
         },
       };
@@ -334,11 +471,28 @@ export const api = {
         const lower = ing.toLowerCase();
         let qty = "100 g";
         if (lower.includes("proteine") || lower.includes("whey")) qty = "30 g";
-        else if (lower.includes("riso") || lower.includes("pasta") || lower.includes("avena") || lower.includes("cereale")) qty = "80 g";
-        else if (lower.includes("pollo") || lower.includes("carne") || lower.includes("pesce")) qty = "200 g";
-        else if (lower.includes("mela") || lower.includes("frutta") || lower.includes("banana")) qty = "150 g";
+        else if (
+          lower.includes("riso") ||
+          lower.includes("pasta") ||
+          lower.includes("avena") ||
+          lower.includes("cereale")
+        )
+          qty = "80 g";
+        else if (
+          lower.includes("pollo") ||
+          lower.includes("carne") ||
+          lower.includes("pesce")
+        )
+          qty = "200 g";
+        else if (
+          lower.includes("mela") ||
+          lower.includes("frutta") ||
+          lower.includes("banana")
+        )
+          qty = "150 g";
         else if (lower.includes("olio")) qty = "10 g";
-        else if (lower.includes("yogurt") || lower.includes("latte")) qty = "200 g";
+        else if (lower.includes("yogurt") || lower.includes("latte"))
+          qty = "200 g";
         return `${qty} di ${ing}`;
       });
 
@@ -350,8 +504,16 @@ export const api = {
             protein: 35,
             carbs: 50,
             fats: 12,
-            items: balancedItems.length > 0 ? balancedItems : ["150 g ingrediente principale", "50 g fonte di carboidrati", "10 g condimento"],
-            recipe: "Mescola e cuoci gli ingredienti bilanciati secondo le quantità indicate.",
+            items:
+              balancedItems.length > 0
+                ? balancedItems
+                : [
+                    "150 g ingrediente principale",
+                    "50 g fonte di carboidrati",
+                    "10 g condimento",
+                  ],
+            recipe:
+              "Mescola e cuoci gli ingredienti bilanciati secondo le quantità indicate.",
             custom: true,
             added: ["Olio EVO 10g", "Spezie a piacere"],
           },
@@ -361,7 +523,9 @@ export const api = {
     if (url.includes("/recipes/light") || url.includes("/recipes/generate")) {
       const saved = localStorage.getItem(`${prefix}_recipes`);
       let currentRecipes = saved ? JSON.parse(saved) : initialRecipes;
-      const availableNew = extraRecipesPool.filter((r) => !currentRecipes.some((existing) => existing.id === r.id));
+      const availableNew = extraRecipesPool.filter(
+        (r) => !currentRecipes.some((existing) => existing.id === r.id)
+      );
 
       if (availableNew.length > 0) {
         currentRecipes.push(availableNew[0]);
@@ -373,8 +537,16 @@ export const api = {
           protein: 20,
           carbs: 30,
           fats: 7,
-          ingredients: ["100g fiocchi di latte", "1 fetta di pane fit tostato", "Miele q.b."],
-          steps: ["Tosta la fetta di pane fit.", "Spalma i fiocchi di latte sopra.", "Aggiungi un filo di miele e servi."],
+          ingredients: [
+            "100g fiocchi di latte",
+            "1 fetta di pane fit tostato",
+            "Miele q.b.",
+          ],
+          steps: [
+            "Tosta la fetta di pane fit.",
+            "Spalma i fiocchi di latte sopra.",
+            "Aggiungi un filo di miele e servi.",
+          ],
         };
         currentRecipes.push(newDynamic);
       }
@@ -382,18 +554,24 @@ export const api = {
       localStorage.setItem(`${prefix}_recipes`, JSON.stringify(currentRecipes));
       return { data: { recipes: currentRecipes } };
     }
-    if (url.includes("/meal/photo") || url.includes("/photo") || url.includes("/diary")) {
+    if (
+      url.includes("/meal/photo") ||
+      url.includes("/photo") ||
+      url.includes("/diary")
+    ) {
       const analysisResult = {
         id: Date.now(),
         dish: "Petto di pollo alla griglia con verdure",
         compatible: true,
-        verdict: "Ottima scelta proteica, perfettamente in linea con il tuo piano di massa e definizione.",
+        verdict:
+          "Ottima scelta proteica, perfettamente in linea con il tuo piano di massa e definizione.",
         calories: 340,
         protein: 42,
         carbs: 6,
         fats: 5,
         date: new Date().toISOString(),
-        advice: "Ottimo apporto di proteine nobili con pochissimi grassi saturi.",
+        advice:
+          "Ottimo apporto di proteine nobili con pochissimi grassi saturi.",
       };
 
       const saved = JSON.parse(localStorage.getItem(`${prefix}_diary`) || "[]");
@@ -402,7 +580,8 @@ export const api = {
       return { data: analysisResult };
     }
     if (url.includes("/shopping-list") || url.includes("/shopping")) {
-      currentShoppingPoolIndex = (currentShoppingPoolIndex + 1) % shoppingPools.length;
+      currentShoppingPoolIndex =
+        (currentShoppingPoolIndex + 1) % shoppingPools.length;
       const nextCategories = shoppingPools[currentShoppingPoolIndex];
       localStorage.setItem(`${prefix}_shopping`, JSON.stringify(nextCategories));
       return { data: { categories: nextCategories } };
@@ -420,8 +599,16 @@ export const api = {
     const prefix = await getStoragePrefix();
 
     if (url.includes("/profile")) {
-      const current = JSON.parse(localStorage.getItem(`${prefix}_profile`) || JSON.stringify(defaultProfile));
-      const updated = { ...current, ...body, completed: true, onboarding_completed: true };
+      const current = JSON.parse(
+        localStorage.getItem(`${prefix}_profile`) ||
+          JSON.stringify(defaultProfile)
+      );
+      const updated = {
+        ...current,
+        ...body,
+        completed: true,
+        onboarding_completed: true,
+      };
       localStorage.setItem(`${prefix}_profile`, JSON.stringify(updated));
       return { data: { profile: updated } };
     }
@@ -431,7 +618,10 @@ export const api = {
     }
     if (url.includes("/shopping-list")) {
       if (body?.categories) {
-        localStorage.setItem(`${prefix}_shopping`, JSON.stringify(body.categories));
+        localStorage.setItem(
+          `${prefix}_shopping`,
+          JSON.stringify(body.categories)
+        );
       }
       return { data: body };
     }
