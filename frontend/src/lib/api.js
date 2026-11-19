@@ -55,6 +55,15 @@ const clearOtherUsersStorage = (keepUid = null) => {
   keysToRemove.forEach((key) => localStorage.removeItem(key));
 };
 
+const clearCorruptedSupabaseAuthKeys = () => {
+  for (let i = localStorage.length - 1; i >= 0; i -= 1) {
+    const key = localStorage.key(i);
+    if (key && key.startsWith("sb-") && key.includes("-auth-token")) {
+      localStorage.removeItem(key);
+    }
+  }
+};
+
 const defaultProfile = {
   age: "",
   weight: "",
@@ -432,10 +441,30 @@ export const api = {
   post: async (url, body) => {
     if (url.includes("/auth/login")) {
       const cleanEmail = String(body?.email || "").trim().toLowerCase();
-      const { data, error } = await supabase.auth.signInWithPassword({
+      let { data, error } = await supabase.auth.signInWithPassword({
         email: cleanEmail,
         password: body?.password,
       });
+
+      if (error) {
+        const msg = String(error?.message || "").toLowerCase();
+        if (
+          msg.includes("session") ||
+          msg.includes("user missing") ||
+          msg.includes("refresh_token") ||
+          msg.includes("invalid")
+        ) {
+          await supabase.auth.signOut({ scope: "local" }).catch(() => {});
+          clearCorruptedSupabaseAuthKeys();
+          const retry = await supabase.auth.signInWithPassword({
+            email: cleanEmail,
+            password: body?.password,
+          });
+          data = retry.data;
+          error = retry.error;
+        }
+      }
+
       if (error) throw error;
       const u = data.user;
       if (u?.id) {
