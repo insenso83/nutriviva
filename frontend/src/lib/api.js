@@ -11,6 +11,15 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   },
 });
 
+const STORAGE_SUFFIXES = [
+  "_profile",
+  "_plan",
+  "_diary",
+  "_favs",
+  "_shopping",
+  "_recipes",
+];
+
 const getStoragePrefix = async () => {
   const { data } = await supabase.auth.getUser();
   const uid = data?.user?.id;
@@ -20,14 +29,30 @@ const getStoragePrefix = async () => {
 const clearUserStorage = (uid) => {
   if (!uid) return;
   const prefix = `nv_${uid}`;
-  [
-    "_profile",
-    "_plan",
-    "_diary",
-    "_favs",
-    "_shopping",
-    "_recipes",
-  ].forEach((suffix) => localStorage.removeItem(`${prefix}${suffix}`));
+  STORAGE_SUFFIXES.forEach((suffix) =>
+    localStorage.removeItem(`${prefix}${suffix}`)
+  );
+};
+
+const clearOtherUsersStorage = (keepUid = null) => {
+  const keepPrefix = keepUid ? `nv_${keepUid}` : null;
+  const keysToRemove = [];
+
+  for (let i = 0; i < localStorage.length; i += 1) {
+    const key = localStorage.key(i);
+    if (!key) continue;
+    if (key.startsWith("nv_guest")) {
+      keysToRemove.push(key);
+      continue;
+    }
+    if (key.startsWith("nv_") && key !== "nv_token") {
+      if (!keepPrefix || !key.startsWith(keepPrefix)) {
+        keysToRemove.push(key);
+      }
+    }
+  }
+
+  keysToRemove.forEach((key) => localStorage.removeItem(key));
 };
 
 const defaultProfile = {
@@ -406,12 +431,16 @@ export const api = {
 
   post: async (url, body) => {
     if (url.includes("/auth/login")) {
+      const cleanEmail = String(body?.email || "").trim().toLowerCase();
       const { data, error } = await supabase.auth.signInWithPassword({
-        email: body?.email,
+        email: cleanEmail,
         password: body?.password,
       });
       if (error) throw error;
       const u = data.user;
+      if (u?.id) {
+        clearOtherUsersStorage(u.id);
+      }
       return {
         data: {
           id: u.id,
@@ -423,30 +452,33 @@ export const api = {
     }
 
     if (url.includes("/auth/register")) {
+      const cleanEmail = String(body?.email || "").trim().toLowerCase();
+      const cleanName = String(body?.name || "").trim();
       const { data, error } = await supabase.auth.signUp({
-        email: body?.email,
+        email: cleanEmail,
         password: body?.password,
         options: {
-          data: { name: body?.name || "" },
+          data: { name: cleanName },
         },
       });
       if (error) throw error;
       const u = data.user;
       if (u?.id) {
         clearUserStorage(u.id);
+        clearOtherUsersStorage(u.id);
       }
       return {
         data: {
           id: u?.id,
           email: u?.email,
-          name: body?.name || u?.email?.split("@")[0] || "Utente",
+          name: cleanName || u?.email?.split("@")[0] || "Utente",
           token: data.session?.access_token,
         },
       };
     }
 
     if (url.includes("/auth/logout")) {
-      const { error } = await supabase.auth.signOut();
+      const { error } = await supabase.auth.signOut({ scope: "local" });
       if (error) {
         const msg = String(error?.message || "").toLowerCase();
         if (!msg.includes("session") && !msg.includes("user missing")) {
