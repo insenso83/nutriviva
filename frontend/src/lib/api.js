@@ -701,4 +701,4 @@ export function apiError(err) {
   return "Errore imprevisto";
 }
 
-export default api;s
+export default api;
