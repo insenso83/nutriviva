@@ -89,9 +89,15 @@ export function AuthProvider({ children }) {
   const logout = async () => {
     try {
       await api.post("/auth/logout");
-    } catch {}
-    localStorage.removeItem("nv_token");
-    setUser(false);
+    } catch (err) {
+      const msg = String(err?.message || "").toLowerCase();
+      if (!msg.includes("session") && !msg.includes("user missing")) {
+        console.warn("Logout warning:", err);
+      }
+    } finally {
+      localStorage.removeItem("nv_token");
+      setUser(false);
+    }
   };
 
   return (

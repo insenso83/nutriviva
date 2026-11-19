@@ -17,6 +17,19 @@ const getStoragePrefix = async () => {
   return uid ? `nv_${uid}` : "nv_guest";
 };
 
+const clearUserStorage = (uid) => {
+  if (!uid) return;
+  const prefix = `nv_${uid}`;
+  [
+    "_profile",
+    "_plan",
+    "_diary",
+    "_favs",
+    "_shopping",
+    "_recipes",
+  ].forEach((suffix) => localStorage.removeItem(`${prefix}${suffix}`));
+};
+
 const defaultProfile = {
   age: "",
   weight: "",
@@ -419,6 +432,9 @@ export const api = {
       });
       if (error) throw error;
       const u = data.user;
+      if (u?.id) {
+        clearUserStorage(u.id);
+      }
       return {
         data: {
           id: u?.id,
@@ -431,7 +447,12 @@ export const api = {
 
     if (url.includes("/auth/logout")) {
       const { error } = await supabase.auth.signOut();
-      if (error) throw error;
+      if (error) {
+        const msg = String(error?.message || "").toLowerCase();
+        if (!msg.includes("session") && !msg.includes("user missing")) {
+          throw error;
+        }
+      }
       return { data: { success: true } };
     }
 
