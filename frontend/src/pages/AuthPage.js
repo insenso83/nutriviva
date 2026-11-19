@@ -35,6 +35,7 @@ export default function AuthPage() {
       toast.success("Benvenuto in NutriViva!");
       nav("/app");
     } catch (err) {
+      console.error("Auth error:", err);
       toast.error(apiError(err) || "Errore imprevisto");
     } finally {
       setLoading(false);
