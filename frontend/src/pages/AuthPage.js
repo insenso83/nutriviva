@@ -80,12 +80,14 @@ export default function AuthPage() {
               : "Inizia il tuo percorso nutrizionale."}
           </p>
 
-          <form onSubmit={submit} className="space-y-4">
+          <form onSubmit={submit} className="space-y-4" autoComplete="off">
             {mode === "register" && (
               <div>
                 <Label htmlFor="name">Nome</Label>
                 <Input
                   id="name"
+                  name="name"
+                  autoComplete="name"
                   data-testid="input-name"
                   value={form.name}
                   required
@@ -98,8 +100,9 @@ export default function AuthPage() {
               <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
+                name="email"
                 type="email"
-                autoComplete={mode === "login" ? "email" : "email"}
+                autoComplete={mode === "login" ? "username" : "email"}
                 data-testid="input-email"
                 value={form.email}
                 required
@@ -111,6 +114,7 @@ export default function AuthPage() {
               <Label htmlFor="password">Password</Label>
               <Input
                 id="password"
+                name="password"
                 type="password"
                 autoComplete={
                   mode === "login" ? "current-password" : "new-password"
