@@ -64,6 +64,8 @@ export function AuthProvider({ children }) {
         email: data.email,
         name: data.name || data.email?.split("@")[0] || "Utente",
       });
+    } else {
+      setUser(false);
     }
   };
 
@@ -78,8 +80,9 @@ export function AuthProvider({ children }) {
 
   const register = async (name, email, password) => {
     const cleanEmail = String(email || "").trim().toLowerCase();
+    const cleanName = String(name || "").trim();
     const { data } = await api.post("/auth/register", {
-      name: String(name || "").trim(),
+      name: cleanName,
       email: cleanEmail,
       password,
     });
