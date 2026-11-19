@@ -15,21 +15,21 @@ const clearLocalAppData = () => {
   keysToRemove.forEach((key) => localStorage.removeItem(key));
 };
 
+const mapSessionUser = (sessionUser) => {
+  if (!sessionUser) return false;
+  return {
+    id: sessionUser.id,
+    email: sessionUser.email,
+    name:
+      sessionUser.user_metadata?.name ||
+      sessionUser.email?.split("@")[0] ||
+      "Utente",
+  };
+};
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null); // null=checking, false=logged out
   const [ready, setReady] = useState(false);
-
-  const mapSessionUser = (sessionUser) => {
-    if (!sessionUser) return false;
-    return {
-      id: sessionUser.id,
-      email: sessionUser.email,
-      name:
-        sessionUser.user_metadata?.name ||
-        sessionUser.email?.split("@")[0] ||
-        "Utente",
-    };
-  };
 
   useEffect(() => {
     let active = true;
@@ -46,16 +46,18 @@ export function AuthProvider({ children }) {
         if (active) setReady(true);
       });
 
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!active) return;
-      if (session?.user) {
-        setUser(mapSessionUser(session.user));
-      } else {
-        clearLocalAppData();
-        setUser(false);
+    const { data: listener } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        if (!active) return;
+        if (session?.user) {
+          setUser(mapSessionUser(session.user));
+        } else if (event === "SIGNED_OUT") {
+          clearLocalAppData();
+          setUser(false);
+        }
+        setReady(true);
       }
-      setReady(true);
-    });
+    );
 
     return () => {
       active = false;
@@ -64,12 +66,6 @@ export function AuthProvider({ children }) {
   }, []);
 
   const afterAuth = (data) => {
-    if (data?.token) {
-      localStorage.setItem("nv_token", data.token);
-    } else {
-      localStorage.removeItem("nv_token");
-    }
-
     if (data?.id || data?.email) {
       setUser({
         id: data.id,
