@@ -28,12 +28,17 @@ export default function AuthPage() {
       const cleanName = form.name.trim();
       if (mode === "login") {
         await login(cleanEmail, form.password);
+        setForm({ name: "", email: "", password: "" });
+        toast.success("Benvenuto in NutriViva!");
+        nav("/app");
       } else {
         await register(cleanName, cleanEmail, form.password);
+        setForm({ name: "", email: "", password: "" });
+        toast.success(
+          "Account creato! Se richiesta, conferma l'email prima di accedere."
+        );
+        nav("/app");
       }
-      setForm({ name: "", email: "", password: "" });
-      toast.success("Benvenuto in NutriViva!");
-      nav("/app");
     } catch (err) {
       console.error("Auth error:", err);
       toast.error(apiError(err) || "Errore imprevisto");
