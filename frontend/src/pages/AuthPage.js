@@ -15,6 +15,11 @@ export default function AuthPage() {
   const [form, setForm] = useState({ name: "", email: "", password: "" });
   const [loading, setLoading] = useState(false);
 
+  const toggleMode = () => {
+    setMode((prev) => (prev === "login" ? "register" : "login"));
+    setForm({ name: "", email: "", password: "" });
+  };
+
   const submit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -26,6 +31,7 @@ export default function AuthPage() {
       } else {
         await register(cleanName, cleanEmail, form.password);
       }
+      setForm({ name: "", email: "", password: "" });
       toast.success("Benvenuto in NutriViva!");
       nav("/app");
     } catch (err) {
@@ -68,7 +74,9 @@ export default function AuthPage() {
             {mode === "login" ? "Bentornato" : "Crea il tuo account"}
           </h2>
           <p className="text-muted-foreground mt-1 mb-8">
-            {mode === "login" ? "Accedi per vedere il tuo piano." : "Inizia il tuo percorso nutrizionale."}
+            {mode === "login"
+              ? "Accedi per vedere il tuo piano."
+              : "Inizia il tuo percorso nutrizionale."}
           </p>
 
           <form onSubmit={submit} className="space-y-4">
@@ -90,6 +98,7 @@ export default function AuthPage() {
               <Input
                 id="email"
                 type="email"
+                autoComplete={mode === "login" ? "email" : "email"}
                 data-testid="input-email"
                 value={form.email}
                 required
@@ -102,6 +111,9 @@ export default function AuthPage() {
               <Input
                 id="password"
                 type="password"
+                autoComplete={
+                  mode === "login" ? "current-password" : "new-password"
+                }
                 data-testid="input-password"
                 value={form.password}
                 required
@@ -115,17 +127,23 @@ export default function AuthPage() {
               data-testid="btn-submit-auth"
               className="w-full rounded-full h-12 text-base bg-primary hover:bg-primary/90"
             >
-              {loading ? "Attendi…" : mode === "login" ? "Accedi" : "Registrati"}
+              {loading
+                ? "Attendi…"
+                : mode === "login"
+                ? "Accedi"
+                : "Registrati"}
             </Button>
           </form>
 
           <p className="text-center text-sm text-muted-foreground mt-6">
-            {mode === "login" ? "Non hai un account?" : "Hai già un account?"}{" "}
+            {mode === "login"
+              ? "Non hai un account?"
+              : "Hai già un account?"}{" "}
             <button
               type="button"
               data-testid="btn-toggle-mode"
               className="text-primary font-semibold underline"
-              onClick={() => setMode(mode === "login" ? "register" : "login")}
+              onClick={toggleMode}
             >
               {mode === "login" ? "Registrati" : "Accedi"}
             </button>
