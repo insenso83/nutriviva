@@ -171,24 +171,43 @@ const createDayMeals = () => [
   },
 ];
 
-const defaultPlan = {
-  notes: "Piano settimanale bilanciato per la massa e definizione muscolare.",
-  dailyCalories: 2350,
-  days: [
-    "Lunedì",
-    "Martedì",
-    "Mercoledì",
-    "Giovedì",
-    "Venerdì",
-    "Sabato",
-    "Domenica",
-  ].map((dayName, idx) => ({
-    day: dayName,
-    dayType: idx % 2 === 0 ? "allenamento" : "riposo",
-    totalCalories: 2350,
-    meals: createDayMeals(),
-  })),
+const DAYS_OF_WEEK = [
+  "Lunedì",
+  "Martedì",
+  "Mercoledì",
+  "Giovedì",
+  "Venerdì",
+  "Sabato",
+  "Domenica",
+];
+
+const buildPlanFromProfile = (profile = {}) => {
+  const freq = String(profile?.trainingFrequency || "").toLowerCase();
+
+  let trainingIndices = [];
+  if (freq.includes("tutti") || freq.includes("7")) {
+    trainingIndices = [0, 1, 2, 3, 4, 5, 6];
+  } else if (freq.includes("5") || freq.includes("6")) {
+    trainingIndices = [0, 1, 2, 4, 5];
+  } else if (freq.includes("3") || freq.includes("4")) {
+    trainingIndices = [0, 2, 4];
+  } else if (freq.includes("1") || freq.includes("2")) {
+    trainingIndices = [0, 3];
+  }
+
+  return {
+    notes: "Piano settimanale bilanciato per la massa e definizione muscolare.",
+    dailyCalories: 2350,
+    days: DAYS_OF_WEEK.map((dayName, idx) => ({
+      day: dayName,
+      dayType: trainingIndices.includes(idx) ? "allenamento" : "riposo",
+      totalCalories: 2350,
+      meals: createDayMeals(),
+    })),
+  };
 };
+
+const defaultPlan = buildPlanFromProfile({});
 
 const shoppingPools = [
   [
@@ -519,8 +538,12 @@ export const api = {
     const prefix = await getStoragePrefix();
 
     if (url.includes("/plan/generate")) {
-      localStorage.setItem(`${prefix}_plan`, JSON.stringify(defaultPlan));
-      return { data: { status: "success", success: true } };
+      const savedProfile = JSON.parse(
+        localStorage.getItem(`${prefix}_profile`) || "{}"
+      );
+      const generatedPlan = buildPlanFromProfile(savedProfile);
+      localStorage.setItem(`${prefix}_plan`, JSON.stringify(generatedPlan));
+      return { data: { status: "success", success: true, plan: generatedPlan } };
     }
     if (url.includes("/plan/alternative")) {
       return {
