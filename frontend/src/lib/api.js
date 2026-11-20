@@ -181,18 +181,108 @@ const DAYS_OF_WEEK = [
   "Domenica",
 ];
 
-const buildPlanFromProfile = (profile = {}) => {
-  const freq = String(profile?.trainingFrequency || "").toLowerCase();
+const DAY_ALIASES = {
+  0: ["lun", "lunedì", "lunedi", "mon", "monday", "0"],
+  1: ["mar", "martedì", "martedi", "tue", "tuesday", "1"],
+  2: ["mer", "mercoledì", "mercoledi", "wed", "wednesday", "2"],
+  3: ["gio", "giovedì", "giovedi", "thu", "thursday", "3"],
+  4: ["ven", "venerdì", "venerdi", "fri", "friday", "4"],
+  5: ["sab", "sabato", "sat", "saturday", "5"],
+  6: ["dom", "domenica", "sun", "sunday", "6"],
+};
 
-  let trainingIndices = [];
-  if (freq.includes("tutti") || freq.includes("7")) {
-    trainingIndices = [0, 1, 2, 3, 4, 5, 6];
-  } else if (freq.includes("5") || freq.includes("6")) {
-    trainingIndices = [0, 1, 2, 4, 5];
-  } else if (freq.includes("3") || freq.includes("4")) {
-    trainingIndices = [0, 2, 4];
-  } else if (freq.includes("1") || freq.includes("2")) {
-    trainingIndices = [0, 3];
+const extractSelectedDayIndices = (profile = {}) => {
+  const matchedIndices = new Set();
+
+  const candidateKeys = [
+    "trainingDays",
+    "workoutDays",
+    "training_days",
+    "workout_days",
+    "selectedDays",
+    "daysOfWeek",
+    "giorniAllenamento",
+    "giorni_allenamento",
+    "allenamentoGiorni",
+    "days",
+  ];
+
+  const inspectValue = (val) => {
+    if (!val) return;
+    if (Array.isArray(val)) {
+      val.forEach((item) => {
+        if (typeof item === "string" || typeof item === "number") {
+          const norm = String(item).trim().toLowerCase();
+          Object.entries(DAY_ALIASES).forEach(([idxStr, aliases]) => {
+            if (
+              aliases.includes(norm) ||
+              aliases.some((a) => norm.startsWith(a) && a.length >= 3)
+            ) {
+              matchedIndices.add(Number(idxStr));
+            }
+          });
+        } else if (item && typeof item === "object") {
+          const active =
+            item.active ??
+            item.selected ??
+            item.enabled ??
+            item.checked ??
+            item.isTraining;
+          if (active === false) return;
+          const label =
+            item.day ?? item.label ?? item.name ?? item.key ?? item.id;
+          if (label !== undefined) inspectValue(label);
+        }
+      });
+    } else if (typeof val === "object") {
+      Object.entries(val).forEach(([k, v]) => {
+        const normKey = String(k).trim().toLowerCase();
+        Object.entries(DAY_ALIASES).forEach(([idxStr, aliases]) => {
+          if (aliases.includes(normKey) && Boolean(v)) {
+            matchedIndices.add(Number(idxStr));
+          }
+        });
+      });
+    }
+  };
+
+  candidateKeys.forEach((key) => {
+    if (key in profile) {
+      inspectValue(profile[key]);
+    }
+  });
+
+  if (matchedIndices.size === 0) {
+    Object.entries(profile).forEach(([key, val]) => {
+      const kLower = String(key).toLowerCase();
+      if (
+        kLower.includes("day") ||
+        kLower.includes("giorn") ||
+        kLower.includes("train") ||
+        kLower.includes("work")
+      ) {
+        inspectValue(val);
+      }
+    });
+  }
+
+  return Array.from(matchedIndices).sort((a, b) => a - b);
+};
+
+const buildPlanFromProfile = (profile = {}) => {
+  let trainingIndices = extractSelectedDayIndices(profile);
+
+  if (trainingIndices.length === 0) {
+    const freq = String(profile?.trainingFrequency || "").toLowerCase();
+    if (freq.includes("tutti") || freq.includes("7")) {
+      trainingIndices = [0, 1, 2, 3, 4, 5, 6];
+    } else if (freq.includes("5") || freq.includes("6")) {
+      trainingIndices = [0, 1, 2, 4, 5];
+    } else if (freq.includes("3") || freq.includes("4")) {
+      trainingIndices = [0, 2, 4];
+    } else if (freq.includes("1") || freq.includes("2")) {
+      trainingIndices = [0, 3];
+    }
   }
 
   return {
