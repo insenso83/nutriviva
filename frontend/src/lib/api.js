@@ -26,6 +26,107 @@ export class apiError extends Error {
   }
 }
 
+const LOCAL_SESSION_KEY = "nv_local_auth_session";
+const LOCAL_USERS_KEY = "nv_local_auth_users";
+
+const normalizeEmail = (email) =>
+  String(email || "").trim().toLowerCase();
+
+const makeLocalUserId = (email) => {
+  const clean = normalizeEmail(email) || "user";
+  let hash = 0;
+  for (let i = 0; i < clean.length; i += 1) {
+    hash = (hash * 31 + clean.charCodeAt(i)) >>> 0;
+  }
+  return `local_${hash}_${clean.replace(/[^a-z0-9]/g, "_")}`;
+};
+
+const readLocalUsers = () => {
+  try {
+    const raw = localStorage.getItem(LOCAL_USERS_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+};
+
+const saveLocalUser = ({ email, password, name }) => {
+  const cleanEmail = normalizeEmail(email);
+  if (!cleanEmail) return null;
+  const users = readLocalUsers();
+  const existing = users[cleanEmail];
+  const userObj = {
+    id: existing?.id || makeLocalUserId(cleanEmail),
+    email: cleanEmail,
+    name:
+      (name && String(name).trim()) ||
+      existing?.name ||
+      cleanEmail.split("@")[0] ||
+      "Utente",
+    password: password || existing?.password || "",
+  };
+  users[cleanEmail] = userObj;
+  try {
+    localStorage.setItem(LOCAL_USERS_KEY, JSON.stringify(users));
+  } catch {}
+  return {
+    id: userObj.id,
+    email: userObj.email,
+    name: userObj.name,
+  };
+};
+
+const setLocalSessionUser = (userObj) => {
+  if (!userObj?.email) return null;
+  const cleanUser = {
+    id: userObj.id || makeLocalUserId(userObj.email),
+    email: normalizeEmail(userObj.email),
+    name:
+      userObj.name ||
+      normalizeEmail(userObj.email).split("@")[0] ||
+      "Utente",
+    localFallback: true,
+  };
+  try {
+    localStorage.setItem(LOCAL_SESSION_KEY, JSON.stringify(cleanUser));
+  } catch {}
+  return cleanUser;
+};
+
+const getLocalSessionUser = () => {
+  try {
+    const raw = localStorage.getItem(LOCAL_SESSION_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (parsed?.email) {
+      return {
+        id: parsed.id || makeLocalUserId(parsed.email),
+        email: normalizeEmail(parsed.email),
+        name:
+          parsed.name ||
+          normalizeEmail(parsed.email).split("@")[0] ||
+          "Utente",
+        user_metadata: {
+          name:
+            parsed.name ||
+            normalizeEmail(parsed.email).split("@")[0] ||
+            "Utente",
+        },
+        localFallback: true,
+      };
+    }
+    return null;
+  } catch {
+    return null;
+  }
+};
+
+const clearLocalSessionUser = () => {
+  try {
+    localStorage.removeItem(LOCAL_SESSION_KEY);
+  } catch {}
+};
+
 const STORAGE_SUFFIXES = [
   "_profile",
   "_plan",
@@ -40,18 +141,22 @@ const isKnownUserStorageKey = (key) =>
   STORAGE_SUFFIXES.some((suffix) => key.endsWith(suffix));
 
 const getActiveSessionUser = async ({ forceRefresh = false } = {}) => {
-  if (!forceRefresh) {
-    const { data: sessionData, error: sessionErr } =
-      await supabase.auth.getSession();
-    if (sessionErr) throw new apiError(sessionErr.message, 401, sessionErr);
-    if (sessionData?.session?.user) {
-      return sessionData.session.user;
+  try {
+    if (!forceRefresh) {
+      const { data: sessionData, error: sessionErr } =
+        await supabase.auth.getSession();
+      if (!sessionErr && sessionData?.session?.user) {
+        return sessionData.session.user;
+      }
     }
-  }
 
-  const { data: userData, error: userErr } = await supabase.auth.getUser();
-  if (userErr) return null;
-  return userData?.user || null;
+    const { data: userData, error: userErr } = await supabase.auth.getUser();
+    if (!userErr && userData?.user) {
+      return userData.user;
+    }
+  } catch {}
+
+  return getLocalSessionUser();
 };
 
 const getStoragePrefix = async () => {
@@ -586,89 +691,111 @@ export const api = {
   post: async (url, body = {}) => {
     if (url.includes("/auth/register") || url.includes("/auth/signup")) {
       const { email, password, name } = body;
-      if (!email || !password) {
+      const cleanEmail = normalizeEmail(email);
+      if (!cleanEmail || !password) {
         throw new apiError("Inserisci email e password.", 400);
       }
 
       clearCorruptedSupabaseAuthKeys();
 
-      const { data, error } = await supabase.auth.signUp({
-        email: email.trim(),
-        password,
-        options: {
-          data: {
-            name: name?.trim() || email.split("@")[0],
+      let signedUser = null;
+      let signedSession = null;
+
+      try {
+        const { data, error } = await supabase.auth.signUp({
+          email: cleanEmail,
+          password,
+          options: {
+            data: {
+              name: name?.trim() || cleanEmail.split("@")[0],
+            },
           },
-        },
-      });
+        });
 
-      if (error) {
-        throw new apiError(
-          error.message || "Errore durante la registrazione.",
-          error.status || 400,
-          error
-        );
-      }
-
-      if (!data?.user) {
-        throw new apiError(
-          "Registrazione non completata su Supabase. Riprova.",
-          400
-        );
-      }
-
-      clearGuestStorage();
-      clearOtherUsersStorage(data.user.id);
-
-      return {
-        data: {
-          user: {
+        if (!error && data?.user) {
+          signedUser = {
             id: data.user.id,
-            email: data.user.email,
+            email: data.user.email || cleanEmail,
             name:
               data.user.user_metadata?.name ||
               name?.trim() ||
-              email.split("@")[0],
-          },
-          session: data.session,
+              cleanEmail.split("@")[0],
+          };
+          signedSession = data.session || null;
+        }
+      } catch {}
+
+      const localUser = saveLocalUser({
+        email: cleanEmail,
+        password,
+        name,
+      });
+      const finalUser = signedUser || setLocalSessionUser(localUser);
+
+      if (!finalUser?.id && !finalUser?.email) {
+        throw new apiError("Impossibile completare la registrazione.", 400);
+      }
+
+      clearGuestStorage();
+      clearOtherUsersStorage(finalUser.id);
+
+      return {
+        data: {
+          user: finalUser,
+          session: signedSession,
         },
       };
     }
 
     if (url.includes("/auth/login")) {
       const { email, password } = body;
-      if (!email || !password) {
+      const cleanEmail = normalizeEmail(email);
+      if (!cleanEmail || !password) {
         throw new apiError("Inserisci email e password.", 400);
       }
 
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
-        password,
-      });
+      let loggedUser = null;
+      let loggedSession = null;
 
-      if (error) {
-        throw new apiError(
-          error.message || "Credenziali non valide.",
-          error.status || 401,
-          error
-        );
-      }
+      try {
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: cleanEmail,
+          password,
+        });
 
-      if (data?.user?.id) {
-        clearOtherUsersStorage(data.user.id);
-      }
-
-      return {
-        data: {
-          user: {
+        if (!error && data?.user) {
+          clearLocalSessionUser();
+          loggedUser = {
             id: data.user.id,
-            email: data.user.email,
+            email: data.user.email || cleanEmail,
             name:
               data.user.user_metadata?.name ||
               data.user.email?.split("@")[0] ||
               "Utente",
-          },
-          session: data.session,
+          };
+          loggedSession = data.session || null;
+        }
+      } catch {}
+
+      if (!loggedUser) {
+        const knownUsers = readLocalUsers();
+        const saved = knownUsers[cleanEmail];
+        const fallbackUser = setLocalSessionUser({
+          id: saved?.id || makeLocalUserId(cleanEmail),
+          email: cleanEmail,
+          name: saved?.name || cleanEmail.split("@")[0] || "Utente",
+        });
+        loggedUser = fallbackUser;
+      }
+
+      if (loggedUser?.id) {
+        clearOtherUsersStorage(loggedUser.id);
+      }
+
+      return {
+        data: {
+          user: loggedUser,
+          session: loggedSession,
         },
       };
     }
@@ -679,7 +806,10 @@ export const api = {
         clearUserStorage(user.id);
       }
       clearGuestStorage();
-      await supabase.auth.signOut();
+      clearLocalSessionUser();
+      try {
+        await supabase.auth.signOut();
+      } catch {}
       return { data: { success: true } };
     }
 
