@@ -5,14 +5,9 @@ const AuthCtx = createContext(null);
 export const useAuth = () => useContext(AuthCtx);
 
 const clearLocalAppData = () => {
-  const keysToRemove = [];
-  for (let i = 0; i < localStorage.length; i += 1) {
-    const key = localStorage.key(i);
-    if (key && key.startsWith("nv_")) {
-      keysToRemove.push(key);
-    }
-  }
-  keysToRemove.forEach((key) => localStorage.removeItem(key));
+  try {
+    localStorage.removeItem("nv_local_auth_session");
+  } catch {}
 };
 
 const mapSessionUser = (sessionUser) => {
