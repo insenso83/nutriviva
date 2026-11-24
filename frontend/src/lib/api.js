@@ -574,4 +574,196 @@ export const api = {
     return { data: { due: false, stock: [], items: [] } };
   },
 
-  post: async (url, body) =>
+  post: async (url, body = {}) => {
+    if (url.includes("/auth/register") || url.includes("/auth/signup")) {
+      const { email, password, name } = body;
+      if (!email || !password) {
+        throw new Error("Inserisci email e password.");
+      }
+
+      clearCorruptedSupabaseAuthKeys();
+
+      const { data, error } = await supabase.auth.signUp({
+        email: email.trim(),
+        password,
+        options: {
+          data: {
+            name: name?.trim() || email.split("@")[0],
+          },
+        },
+      });
+
+      if (error) {
+        throw new Error(error.message || "Errore durante la registrazione.");
+      }
+
+      if (!data?.user) {
+        throw new Error(
+          "Registrazione non completata su Supabase. Riprova."
+        );
+      }
+
+      clearGuestStorage();
+      clearOtherUsersStorage(data.user.id);
+
+      return {
+        data: {
+          user: {
+            id: data.user.id,
+            email: data.user.email,
+            name:
+              data.user.user_metadata?.name ||
+              name?.trim() ||
+              email.split("@")[0],
+          },
+          session: data.session,
+        },
+      };
+    }
+
+    if (url.includes("/auth/login")) {
+      const { email, password } = body;
+      if (!email || !password) {
+        throw new Error("Inserisci email e password.");
+      }
+
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      });
+
+      if (error) {
+        throw new Error(error.message || "Credenziali non valide.");
+      }
+
+      if (data?.user?.id) {
+        clearOtherUsersStorage(data.user.id);
+      }
+
+      return {
+        data: {
+          user: {
+            id: data.user.id,
+            email: data.user.email,
+            name:
+              data.user.user_metadata?.name ||
+              data.user.email?.split("@")[0] ||
+              "Utente",
+          },
+          session: data.session,
+        },
+      };
+    }
+
+    if (url.includes("/auth/logout")) {
+      const user = await getActiveSessionUser();
+      if (user?.id) {
+        clearUserStorage(user.id);
+      }
+      clearGuestStorage();
+      await supabase.auth.signOut();
+      return { data: { success: true } };
+    }
+
+    const prefix = await getStoragePrefix();
+
+    if (url.includes("/profile")) {
+      const existing = JSON.parse(
+        localStorage.getItem(`${prefix}_profile`) || "{}"
+      );
+      const updated = {
+        ...defaultProfile,
+        ...existing,
+        ...body,
+        completed: true,
+        onboarding_completed: true,
+      };
+      localStorage.setItem(`${prefix}_profile`, JSON.stringify(updated));
+
+      const generatedPlan = buildPlanFromProfile(updated);
+      localStorage.setItem(`${prefix}_plan`, JSON.stringify(generatedPlan));
+
+      return { data: updated };
+    }
+
+    if (url.includes("/plan/generate") || url.includes("/plan")) {
+      const profile = JSON.parse(
+        localStorage.getItem(`${prefix}_profile`) || "{}"
+      );
+      const generatedPlan = body?.days ? body : buildPlanFromProfile(profile);
+      localStorage.setItem(`${prefix}_plan`, JSON.stringify(generatedPlan));
+      return { data: { status: "ready", plan: generatedPlan } };
+    }
+
+    if (url.includes("/diary")) {
+      const saved = JSON.parse(
+        localStorage.getItem(`${prefix}_diary`) || "[]"
+      );
+      const newEntry = {
+        id: Date.now().toString(),
+        createdAt: new Date().toISOString(),
+        ...body,
+      };
+      const updated = [newEntry, ...saved];
+      localStorage.setItem(`${prefix}_diary`, JSON.stringify(updated));
+      return { data: newEntry };
+    }
+
+    if (url.includes("/favorites")) {
+      const saved = JSON.parse(
+        localStorage.getItem(`${prefix}_favs`) || "[]"
+      );
+      const exists = saved.some((item) => item.id === body.id);
+      const updated = exists
+        ? saved.filter((item) => item.id !== body.id)
+        : [...saved, body];
+      localStorage.setItem(`${prefix}_favs`, JSON.stringify(updated));
+      return { data: { favorites: updated } };
+    }
+
+    if (url.includes("/shopping-list") || url.includes("/shopping")) {
+      currentShoppingPoolIndex =
+        (currentShoppingPoolIndex + 1) % shoppingPools.length;
+      const categories =
+        body?.categories || shoppingPools[currentShoppingPoolIndex];
+      localStorage.setItem(`${prefix}_shopping`, JSON.stringify(categories));
+      return { data: { categories } };
+    }
+
+    if (url.includes("/recipes/light")) {
+      const saved = JSON.parse(
+        localStorage.getItem(`${prefix}_recipes`) ||
+          JSON.stringify(initialRecipes)
+      );
+      const nextRecipe =
+        extraRecipesPool.find((r) => !saved.some((s) => s.id === r.id)) ||
+        extraRecipesPool[0];
+      const updated = saved.some((s) => s.id === nextRecipe.id)
+        ? saved
+        : [...saved, nextRecipe];
+      localStorage.setItem(`${prefix}_recipes`, JSON.stringify(updated));
+      return { data: { recipes: updated } };
+    }
+
+    return { data: { success: true } };
+  },
+
+  put: async (url, body = {}) => {
+    return api.post(url, body);
+  },
+
+  delete: async (url) => {
+    const prefix = await getStoragePrefix();
+    if (url.includes("/diary")) {
+      const id = url.split("/").pop();
+      const saved = JSON.parse(
+        localStorage.getItem(`${prefix}_diary`) || "[]"
+      );
+      const updated = saved.filter((item) => String(item.id) !== String(id));
+      localStorage.setItem(`${prefix}_diary`, JSON.stringify(updated));
+    }
+    return { data: { success: true } };
+  },
+};
+
+export default api;
