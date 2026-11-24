@@ -3,6 +3,12 @@ import { createClient } from "@supabase/supabase-js";
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
+if (!supabaseUrl || !supabaseAnonKey) {
+  console.warn(
+    "Mancano VITE_SUPABASE_URL o VITE_SUPABASE_ANON_KEY nelle variabili d'ambiente."
+  );
+}
+
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,
@@ -20,18 +26,42 @@ const STORAGE_SUFFIXES = [
   "_recipes",
 ];
 
+const isKnownUserStorageKey = (key) =>
+  key.startsWith("nv_") &&
+  STORAGE_SUFFIXES.some((suffix) => key.endsWith(suffix));
+
+const getActiveSessionUser = async ({ forceRefresh = false } = {}) => {
+  if (!forceRefresh) {
+    const { data: sessionData, error: sessionErr } =
+      await supabase.auth.getSession();
+    if (sessionErr) throw sessionErr;
+    if (sessionData?.session?.user) {
+      return sessionData.session.user;
+    }
+  }
+
+  const { data: userData, error: userErr } = await supabase.auth.getUser();
+  if (userErr) return null;
+  return userData?.user || null;
+};
+
 const getStoragePrefix = async () => {
-  const { data } = await supabase.auth.getUser();
-  const uid = data?.user?.id;
-  return uid ? `nv_${uid}` : "nv_guest";
+  const user = await getActiveSessionUser();
+  return user?.id ? `nv_${user.id}` : "nv_guest";
 };
 
 const clearUserStorage = (uid) => {
   if (!uid) return;
   const prefix = `nv_${uid}`;
-  STORAGE_SUFFIXES.forEach((suffix) =>
-    localStorage.removeItem(`${prefix}${suffix}`)
-  );
+  STORAGE_SUFFIXES.forEach((suffix) => {
+    localStorage.removeItem(`${prefix}${suffix}`);
+  });
+};
+
+const clearGuestStorage = () => {
+  STORAGE_SUFFIXES.forEach((suffix) => {
+    localStorage.removeItem(`nv_guest${suffix}`);
+  });
 };
 
 const clearOtherUsersStorage = (keepUid = null) => {
@@ -40,15 +70,15 @@ const clearOtherUsersStorage = (keepUid = null) => {
 
   for (let i = 0; i < localStorage.length; i += 1) {
     const key = localStorage.key(i);
-    if (!key) continue;
-    if (key.startsWith("nv_guest")) {
+    if (!key || !isKnownUserStorageKey(key)) continue;
+
+    if (key.startsWith("nv_guest_")) {
       keysToRemove.push(key);
       continue;
     }
-    if (key.startsWith("nv_") && key !== "nv_token") {
-      if (!keepPrefix || !key.startsWith(keepPrefix)) {
-        keysToRemove.push(key);
-      }
+
+    if (!keepPrefix || !key.startsWith(`${keepPrefix}_`)) {
+      keysToRemove.push(key);
     }
   }
 
@@ -450,20 +480,17 @@ export const api = {
   supabase,
   get: async (url) => {
     if (url.includes("/auth/me")) {
-      const { data: sessionData, error: sessionErr } =
-        await supabase.auth.getSession();
-      if (sessionErr) throw sessionErr;
-      const sessionUser = sessionData?.session?.user;
-      if (!sessionUser) {
+      const user = await getActiveSessionUser();
+      if (!user) {
         throw new Error("Non autenticato");
       }
       return {
         data: {
-          id: sessionUser.id,
-          email: sessionUser.email,
+          id: user.id,
+          email: user.email,
           name:
-            sessionUser.user_metadata?.name ||
-            sessionUser.email?.split("@")[0] ||
+            user.user_metadata?.name ||
+            user.email?.split("@")[0] ||
             "Utente",
         },
       };
@@ -473,14 +500,14 @@ export const api = {
 
     if (url.includes("/profile")) {
       const saved = localStorage.getItem(`${prefix}_profile`);
-      const { data: userData } = await supabase.auth.getUser();
+      const user = await getActiveSessionUser();
       const base = saved ? JSON.parse(saved) : defaultProfile;
       return {
         data: {
           ...base,
-          id: userData?.user?.id || base.id,
-          email: userData?.user?.email || base.email,
-          name: userData?.user?.user_metadata?.name || base.name,
+          id: user?.id || base.id,
+          email: user?.email || base.email,
+          name: user?.user_metadata?.name || base.name,
         },
       };
     }
@@ -547,299 +574,4 @@ export const api = {
     return { data: { due: false, stock: [], items: [] } };
   },
 
-  post: async (url, body) => {
-    if (url.includes("/auth/login")) {
-      const cleanEmail = String(body?.email || "").trim().toLowerCase();
-      let { data, error } = await supabase.auth.signInWithPassword({
-        email: cleanEmail,
-        password: body?.password,
-      });
-
-      if (error) {
-        const msg = String(error?.message || "").toLowerCase();
-        if (
-          msg.includes("session") ||
-          msg.includes("user missing") ||
-          msg.includes("refresh_token")
-        ) {
-          await supabase.auth.signOut({ scope: "local" }).catch(() => {});
-          clearCorruptedSupabaseAuthKeys();
-          const retry = await supabase.auth.signInWithPassword({
-            email: cleanEmail,
-            password: body?.password,
-          });
-          data = retry.data;
-          error = retry.error;
-        }
-      }
-
-      if (error) throw error;
-      const u = data.user;
-      if (u?.id) {
-        clearOtherUsersStorage(u.id);
-      }
-      return {
-        data: {
-          id: u.id,
-          email: u.email,
-          name: u.user_metadata?.name || u.email?.split("@")[0] || "Utente",
-          token: data.session?.access_token,
-        },
-      };
-    }
-
-    if (url.includes("/auth/register")) {
-      const cleanEmail = String(body?.email || "").trim().toLowerCase();
-      const cleanName = String(body?.name || "").trim();
-      const { data, error } = await supabase.auth.signUp({
-        email: cleanEmail,
-        password: body?.password,
-        options: {
-          data: { name: cleanName },
-        },
-      });
-      if (error) throw error;
-      const u = data.user;
-      if (u?.id) {
-        clearUserStorage(u.id);
-        clearOtherUsersStorage(u.id);
-      }
-      return {
-        data: {
-          id: u?.id,
-          email: u?.email,
-          name: cleanName || u?.email?.split("@")[0] || "Utente",
-          token: data.session?.access_token,
-        },
-      };
-    }
-
-    if (url.includes("/auth/logout")) {
-      const { error } = await supabase.auth.signOut({ scope: "local" });
-      if (error) {
-        const msg = String(error?.message || "").toLowerCase();
-        if (!msg.includes("session") && !msg.includes("user missing")) {
-          throw error;
-        }
-      }
-      return { data: { success: true } };
-    }
-
-    const prefix = await getStoragePrefix();
-
-    if (url.includes("/plan/generate")) {
-      const savedProfile = JSON.parse(
-        localStorage.getItem(`${prefix}_profile`) || "{}"
-      );
-      const generatedPlan = buildPlanFromProfile(savedProfile);
-      localStorage.setItem(`${prefix}_plan`, JSON.stringify(generatedPlan));
-      return { data: { status: "success", success: true, plan: generatedPlan } };
-    }
-    if (url.includes("/plan/alternative")) {
-      return {
-        data: {
-          alternative: {
-            title: "Bowl di riso, pollo e verdure grigliate",
-            calories: 550,
-            protein: 45,
-            carbs: 60,
-            fats: 12,
-            items: [
-              "200 g petto di pollo",
-              "70 g riso basmati",
-              "150 g zucchine grigliate",
-              "10 g olio EVO",
-            ],
-            recipe:
-              "Griglia il petto di pollo e le zucchine, serviti con riso bollito.",
-          },
-        },
-      };
-    }
-    if (url.includes("/plan/custom-meal")) {
-      const rawIngredients = String(body?.ingredients || "")
-        .split(",")
-        .map((i) => i.trim())
-        .filter(Boolean);
-      const balancedItems = rawIngredients.map((ing) => {
-        const lower = ing.toLowerCase();
-        let qty = "100 g";
-        if (lower.includes("proteine") || lower.includes("whey")) qty = "30 g";
-        else if (
-          lower.includes("riso") ||
-          lower.includes("pasta") ||
-          lower.includes("avena") ||
-          lower.includes("cereale")
-        )
-          qty = "80 g";
-        else if (
-          lower.includes("pollo") ||
-          lower.includes("carne") ||
-          lower.includes("pesce")
-        )
-          qty = "200 g";
-        else if (
-          lower.includes("mela") ||
-          lower.includes("frutta") ||
-          lower.includes("banana")
-        )
-          qty = "150 g";
-        else if (lower.includes("olio")) qty = "10 g";
-        else if (lower.includes("yogurt") || lower.includes("latte"))
-          qty = "200 g";
-        return `${qty} di ${ing}`;
-      });
-
-      return {
-        data: {
-          meal: {
-            title: `Pasto bilanciato: ${rawIngredients.join(", ")}`,
-            calories: 490,
-            protein: 35,
-            carbs: 50,
-            fats: 12,
-            items:
-              balancedItems.length > 0
-                ? balancedItems
-                : [
-                    "150 g ingrediente principale",
-                    "50 g fonte di carboidrati",
-                    "10 g condimento",
-                  ],
-            recipe:
-              "Mescola e cuoci gli ingredienti bilanciati secondo le quantità indicate.",
-            custom: true,
-            added: ["Olio EVO 10g", "Spezie a piacere"],
-          },
-        },
-      };
-    }
-    if (url.includes("/recipes/light") || url.includes("/recipes/generate")) {
-      const saved = localStorage.getItem(`${prefix}_recipes`);
-      let currentRecipes = saved ? JSON.parse(saved) : initialRecipes;
-      const availableNew = extraRecipesPool.filter(
-        (r) => !currentRecipes.some((existing) => existing.id === r.id)
-      );
-
-      if (availableNew.length > 0) {
-        currentRecipes.push(availableNew[0]);
-      } else {
-        const newDynamic = {
-          id: `r-gen-${Date.now()}`,
-          title: `Snack Fit Creativo ${currentRecipes.length + 1}`,
-          kcal: 280,
-          protein: 20,
-          carbs: 30,
-          fats: 7,
-          ingredients: [
-            "100g fiocchi di latte",
-            "1 fetta di pane fit tostato",
-            "Miele q.b.",
-          ],
-          steps: [
-            "Tosta la fetta di pane fit.",
-            "Spalma i fiocchi di latte sopra.",
-            "Aggiungi un filo di miele e servi.",
-          ],
-        };
-        currentRecipes.push(newDynamic);
-      }
-
-      localStorage.setItem(`${prefix}_recipes`, JSON.stringify(currentRecipes));
-      return { data: { recipes: currentRecipes } };
-    }
-    if (
-      url.includes("/meal/photo") ||
-      url.includes("/photo") ||
-      url.includes("/diary")
-    ) {
-      const analysisResult = {
-        id: Date.now(),
-        dish: "Petto di pollo alla griglia con verdure",
-        compatible: true,
-        verdict:
-          "Ottima scelta proteica, perfettamente in linea con il tuo piano di massa e definizione.",
-        calories: 340,
-        protein: 42,
-        carbs: 6,
-        fats: 5,
-        date: new Date().toISOString(),
-        advice:
-          "Ottimo apporto di proteine nobili con pochissimi grassi saturi.",
-      };
-
-      const saved = JSON.parse(localStorage.getItem(`${prefix}_diary`) || "[]");
-      saved.push(analysisResult);
-      localStorage.setItem(`${prefix}_diary`, JSON.stringify(saved));
-      return { data: analysisResult };
-    }
-    if (url.includes("/shopping-list") || url.includes("/shopping")) {
-      currentShoppingPoolIndex =
-        (currentShoppingPoolIndex + 1) % shoppingPools.length;
-      const nextCategories = shoppingPools[currentShoppingPoolIndex];
-      localStorage.setItem(`${prefix}_shopping`, JSON.stringify(nextCategories));
-      return { data: { categories: nextCategories } };
-    }
-    if (url.includes("/meals/eaten")) {
-      return { data: { success: true, removed: [] } };
-    }
-    if (url.includes("/favorites")) {
-      return { data: { success: true, id: "fav-1" } };
-    }
-    return { data: { success: true, ...body } };
-  },
-
-  put: async (url, body) => {
-    const prefix = await getStoragePrefix();
-
-    if (url.includes("/profile")) {
-      const current = JSON.parse(
-        localStorage.getItem(`${prefix}_profile`) ||
-          JSON.stringify(defaultProfile)
-      );
-      const updated = {
-        ...current,
-        ...body,
-        completed: true,
-        onboarding_completed: true,
-      };
-      localStorage.setItem(`${prefix}_profile`, JSON.stringify(updated));
-      return { data: { profile: updated } };
-    }
-    if (url.includes("/plan") && body?.plan) {
-      localStorage.setItem(`${prefix}_plan`, JSON.stringify(body.plan));
-      return { data: body.plan };
-    }
-    if (url.includes("/shopping-list")) {
-      if (body?.categories) {
-        localStorage.setItem(
-          `${prefix}_shopping`,
-          JSON.stringify(body.categories)
-        );
-      }
-      return { data: body };
-    }
-    return { data: { success: true, ...body } };
-  },
-
-  delete: async (url) => {
-    if (
-      url.includes("/meals/eaten") ||
-      url.includes("/favorites") ||
-      url.includes("/shopping") ||
-      url.includes("/diary") ||
-      url.includes("/photo")
-    ) {
-      return { data: { success: true } };
-    }
-    return { data: null };
-  },
-};
-
-export function apiError(err) {
-  if (typeof err === "string") return err;
-  if (err?.message) return err.message;
-  return "Errore imprevisto";
-}
-
-export default api;
+  post: async (url, body) =>
