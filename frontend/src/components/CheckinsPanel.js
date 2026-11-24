@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { Scale, Smile, Info } from "lucide-react";
-import { api, apiError } from "@/lib/api";
+import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import MeasurementsCard from "@/components/MeasurementsCard";
 import WeightGoalChart from "@/components/WeightGoalChart";
@@ -30,8 +30,11 @@ export default function CheckinsPanel({ type, status, onDone, profile, onProfile
       toast.success("Peso registrato!");
       setWeight("");
       onDone();
-    } catch (err) { toast.error(apiError(err.response?.data?.detail)); }
-    finally { setSaving(false); }
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || err?.message || "Errore nel salvataggio del peso");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const saveMood = async () => {
@@ -41,29 +44,32 @@ export default function CheckinsPanel({ type, status, onDone, profile, onProfile
       toast.success("Check umore registrato!");
       if (data.tip) setTip(data.tip);
       onDone();
-    } catch (err) { toast.error(apiError(err.response?.data?.detail)); }
-    finally { setSaving(false); }
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || err?.message || "Errore nel salvataggio dell'umore");
+    } finally {
+      setSaving(false);
+    }
   };
 
   if (type === "weight") {
     return (
       <>
-      <div className="grid lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-1 rounded-2xl border border-border bg-card p-6" data-testid="weight-checkin-card">
-          <div className="flex items-center gap-2 text-primary"><Scale className="w-5 h-5" /><h2 className="font-heading text-xl font-bold">Aggiorna il peso</h2></div>
-          <p className="text-sm text-muted-foreground mt-1 mb-4">
-            {status?.due ? "È ora di aggiornare il peso! Obbligatorio ogni 4 giorni." : `Prossimo aggiornamento tra ${status?.nextInDays ?? "-"} giorni.`}
-          </p>
-          <Label htmlFor="w">Peso attuale (kg)</Label>
-          <Input id="w" type="number" data-testid="input-weight-checkin" value={weight} onChange={(e) => setWeight(e.target.value)} placeholder="es. 78.5" />
-          <Button data-testid="btn-save-weight" onClick={saveWeight} disabled={saving || !weight} className="w-full mt-4 rounded-full bg-primary">
-            {saving ? "Salvo…" : "Registra peso"}
-          </Button>
+        <div className="grid lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-1 rounded-2xl border border-border bg-card p-6" data-testid="weight-checkin-card">
+            <div className="flex items-center gap-2 text-primary"><Scale className="w-5 h-5" /><h2 className="font-heading text-xl font-bold">Aggiorna il peso</h2></div>
+            <p className="text-sm text-muted-foreground mt-1 mb-4">
+              {status?.due ? "È ora di aggiornare il peso! Obbligatorio ogni 4 giorni." : `Prossimo aggiornamento tra ${status?.nextInDays ?? "-"} giorni.`}
+            </p>
+            <Label htmlFor="w">Peso attuale (kg)</Label>
+            <Input id="w" type="number" data-testid="input-weight-checkin" value={weight} onChange={(e) => setWeight(e.target.value)} placeholder="es. 78.5" />
+            <Button data-testid="btn-save-weight" onClick={saveWeight} disabled={saving || !weight} className="w-full mt-4 rounded-full bg-primary">
+              {saving ? "Salvo…" : "Registra peso"}
+            </Button>
+          </div>
+          <WeightGoalChart history={status?.history || []} profile={profile} onProfile={onProfile} />
         </div>
-        <WeightGoalChart history={status?.history || []} profile={profile} onProfile={onProfile} />
-      </div>
-      <MeasurementsCard />
-      <ProgressPhotos />
+        <MeasurementsCard />
+        <ProgressPhotos />
       </>
     );
   }
