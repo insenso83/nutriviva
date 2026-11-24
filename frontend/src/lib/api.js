@@ -32,6 +32,9 @@ const LOCAL_USERS_KEY = "nv_local_auth_users";
 const normalizeEmail = (email) =>
   String(email || "").trim().toLowerCase();
 
+const makeEmailStorageKey = (email) =>
+  normalizeEmail(email).replace(/[^a-z0-9]/g, "_");
+
 const makeLocalUserId = (email) => {
   const clean = normalizeEmail(email) || "user";
   let hash = 0;
@@ -136,10 +139,6 @@ const STORAGE_SUFFIXES = [
   "_recipes",
 ];
 
-const isKnownUserStorageKey = (key) =>
-  key.startsWith("nv_") &&
-  STORAGE_SUFFIXES.some((suffix) => key.endsWith(suffix));
-
 const getActiveSessionUser = async ({ forceRefresh = false } = {}) => {
   try {
     if (!forceRefresh) {
@@ -159,36 +158,49 @@ const getActiveSessionUser = async ({ forceRefresh = false } = {}) => {
   return getLocalSessionUser();
 };
 
-const getStoragePrefix = async () => {
+const getStorageContexts = async () => {
   const user = await getActiveSessionUser();
-  return user?.id ? `nv_${user.id}` : "nv_guest";
+  const idPrefix = user?.id ? `nv_${user.id}` : "nv_guest";
+  const emailKey = user?.email ? `nv_email_${makeEmailStorageKey(user.email)}` : null;
+  return { user, idPrefix, emailKey };
+};
+
+const readUserJson = ({ idPrefix, emailKey }, suffix) => {
+  const keysToTry = [
+    `${idPrefix}${suffix}`,
+    emailKey ? `${emailKey}${suffix}` : null,
+  ].filter(Boolean);
+
+  for (const key of keysToTry) {
+    try {
+      const raw = localStorage.getItem(key);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === "object") {
+          return parsed;
+        }
+      }
+    } catch {}
+  }
+  return null;
+};
+
+const writeUserJson = ({ idPrefix, emailKey }, suffix, value) => {
+  const serialized = JSON.stringify(value);
+  try {
+    localStorage.setItem(`${idPrefix}${suffix}`, serialized);
+  } catch {}
+  if (emailKey) {
+    try {
+      localStorage.setItem(`${emailKey}${suffix}`, serialized);
+    } catch {}
+  }
 };
 
 const clearGuestStorage = () => {
   STORAGE_SUFFIXES.forEach((suffix) => {
     localStorage.removeItem(`nv_guest${suffix}`);
   });
-};
-
-const clearOtherUsersStorage = (keepUid = null) => {
-  const keepPrefix = keepUid ? `nv_${keepUid}` : null;
-  const keysToRemove = [];
-
-  for (let i = 0; i < localStorage.length; i += 1) {
-    const key = localStorage.key(i);
-    if (!key || !isKnownUserStorageKey(key)) continue;
-
-    if (key.startsWith("nv_guest_")) {
-      keysToRemove.push(key);
-      continue;
-    }
-
-    if (!keepPrefix || !key.startsWith(`${keepPrefix}_`)) {
-      keysToRemove.push(key);
-    }
-  }
-
-  keysToRemove.forEach((key) => localStorage.removeItem(key));
 };
 
 const clearCorruptedSupabaseAuthKeys = () => {
@@ -602,42 +614,36 @@ export const api = {
       };
     }
 
-    const prefix = await getStoragePrefix();
+    const ctx = await getStorageContexts();
 
     if (url.includes("/profile")) {
-      const saved = localStorage.getItem(`${prefix}_profile`);
-      const user = await getActiveSessionUser();
-      const base = saved ? JSON.parse(saved) : defaultProfile;
+      const saved = readUserJson(ctx, "_profile");
+      const base = saved || defaultProfile;
       return {
         data: {
           ...base,
-          id: user?.id || base.id,
-          email: user?.email || base.email,
-          name: user?.user_metadata?.name || base.name,
+          id: ctx.user?.id || base.id,
+          email: ctx.user?.email || base.email,
+          name: ctx.user?.user_metadata?.name || base.name,
         },
       };
     }
     if (url.includes("/plan")) {
-      const savedPlan = localStorage.getItem(`${prefix}_plan`);
+      const savedPlan = readUserJson(ctx, "_plan");
       return {
         data: {
           status: "ready",
-          plan: savedPlan ? JSON.parse(savedPlan) : defaultPlan,
+          plan: savedPlan || defaultPlan,
         },
       };
     }
     if (url.includes("/summary")) {
-      const profile = JSON.parse(
-        localStorage.getItem(`${prefix}_profile`) || "{}"
-      );
+      const profile = readUserJson(ctx, "_profile") || {};
       const currentWeight = Number(profile.weight) || 0;
-      const savedDiary = JSON.parse(
-        localStorage.getItem(`${prefix}_diary`) || "[]"
-      );
-      const totalPhotoCalories = savedDiary.reduce(
-        (acc, curr) => acc + (curr.calories || 0),
-        0
-      );
+      const savedDiary = readUserJson(ctx, "_diary") || [];
+      const totalPhotoCalories = Array.isArray(savedDiary)
+        ? savedDiary.reduce((acc, curr) => acc + (curr.calories || 0), 0)
+        : 0;
       return {
         data: {
           meals: { planned: 42, eaten: 12 },
@@ -652,8 +658,8 @@ export const api = {
       };
     }
     if (url.includes("/diary")) {
-      const saved = localStorage.getItem(`${prefix}_diary`);
-      const entries = saved ? JSON.parse(saved) : [];
+      const saved = readUserJson(ctx, "_diary");
+      const entries = Array.isArray(saved) ? saved : [];
       const totalCalories = entries.reduce(
         (acc, curr) => acc + (curr.calories || 0),
         0
@@ -661,20 +667,20 @@ export const api = {
       return { data: { entries, totalCalories } };
     }
     if (url.includes("/favorites")) {
-      const saved = localStorage.getItem(`${prefix}_favs`);
-      return { data: { favorites: saved ? JSON.parse(saved) : [] } };
+      const saved = readUserJson(ctx, "_favs");
+      return { data: { favorites: Array.isArray(saved) ? saved : [] } };
     }
     if (url.includes("/meals/eaten")) {
       return { data: { eaten: [] } };
     }
     if (url.includes("/shopping-list") || url.includes("/shopping")) {
-      const saved = localStorage.getItem(`${prefix}_shopping`);
-      const categories = saved ? JSON.parse(saved) : shoppingPools[0];
+      const saved = readUserJson(ctx, "_shopping");
+      const categories = Array.isArray(saved) ? saved : shoppingPools[0];
       return { data: { categories } };
     }
     if (url.includes("/recipes/light")) {
-      const saved = localStorage.getItem(`${prefix}_recipes`);
-      const recipes = saved ? JSON.parse(saved) : initialRecipes;
+      const saved = readUserJson(ctx, "_recipes");
+      const recipes = Array.isArray(saved) ? saved : initialRecipes;
       return { data: { recipes } };
     }
     return { data: { due: false, stock: [], items: [] } };
@@ -729,7 +735,6 @@ export const api = {
       }
 
       clearGuestStorage();
-      clearOtherUsersStorage(finalUser.id);
 
       return {
         data: {
@@ -780,10 +785,6 @@ export const api = {
         loggedUser = fallbackUser;
       }
 
-      if (loggedUser?.id) {
-        clearOtherUsersStorage(loggedUser.id);
-      }
-
       return {
         data: {
           user: loggedUser,
@@ -801,12 +802,10 @@ export const api = {
       return { data: { success: true } };
     }
 
-    const prefix = await getStoragePrefix();
+    const ctx = await getStorageContexts();
 
     if (url.includes("/profile")) {
-      const existing = JSON.parse(
-        localStorage.getItem(`${prefix}_profile`) || "{}"
-      );
+      const existing = readUserJson(ctx, "_profile") || {};
       const updated = {
         ...defaultProfile,
         ...existing,
@@ -814,46 +813,41 @@ export const api = {
         completed: true,
         onboarding_completed: true,
       };
-      localStorage.setItem(`${prefix}_profile`, JSON.stringify(updated));
+      writeUserJson(ctx, "_profile", updated);
 
       const generatedPlan = buildPlanFromProfile(updated);
-      localStorage.setItem(`${prefix}_plan`, JSON.stringify(generatedPlan));
+      writeUserJson(ctx, "_plan", generatedPlan);
 
       return { data: updated };
     }
 
     if (url.includes("/plan/generate") || url.includes("/plan")) {
-      const profile = JSON.parse(
-        localStorage.getItem(`${prefix}_profile`) || "{}"
-      );
+      const profile = readUserJson(ctx, "_profile") || {};
       const generatedPlan = body?.days ? body : buildPlanFromProfile(profile);
-      localStorage.setItem(`${prefix}_plan`, JSON.stringify(generatedPlan));
+      writeUserJson(ctx, "_plan", generatedPlan);
       return { data: { status: "ready", plan: generatedPlan } };
     }
 
     if (url.includes("/diary")) {
-      const saved = JSON.parse(
-        localStorage.getItem(`${prefix}_diary`) || "[]"
-      );
+      const saved = readUserJson(ctx, "_diary") || [];
       const newEntry = {
         id: Date.now().toString(),
         createdAt: new Date().toISOString(),
         ...body,
       };
-      const updated = [newEntry, ...saved];
-      localStorage.setItem(`${prefix}_diary`, JSON.stringify(updated));
+      const updated = [newEntry, ...(Array.isArray(saved) ? saved : [])];
+      writeUserJson(ctx, "_diary", updated);
       return { data: newEntry };
     }
 
     if (url.includes("/favorites")) {
-      const saved = JSON.parse(
-        localStorage.getItem(`${prefix}_favs`) || "[]"
-      );
-      const exists = saved.some((item) => item.id === body.id);
+      const saved = readUserJson(ctx, "_favs") || [];
+      const list = Array.isArray(saved) ? saved : [];
+      const exists = list.some((item) => item.id === body.id);
       const updated = exists
-        ? saved.filter((item) => item.id !== body.id)
-        : [...saved, body];
-      localStorage.setItem(`${prefix}_favs`, JSON.stringify(updated));
+        ? list.filter((item) => item.id !== body.id)
+        : [...list, body];
+      writeUserJson(ctx, "_favs", updated);
       return { data: { favorites: updated } };
     }
 
@@ -862,22 +856,20 @@ export const api = {
         (currentShoppingPoolIndex + 1) % shoppingPools.length;
       const categories =
         body?.categories || shoppingPools[currentShoppingPoolIndex];
-      localStorage.setItem(`${prefix}_shopping`, JSON.stringify(categories));
+      writeUserJson(ctx, "_shopping", categories);
       return { data: { categories } };
     }
 
     if (url.includes("/recipes/light")) {
-      const saved = JSON.parse(
-        localStorage.getItem(`${prefix}_recipes`) ||
-          JSON.stringify(initialRecipes)
-      );
+      const saved = readUserJson(ctx, "_recipes") || initialRecipes;
+      const list = Array.isArray(saved) ? saved : initialRecipes;
       const nextRecipe =
-        extraRecipesPool.find((r) => !saved.some((s) => s.id === r.id)) ||
+        extraRecipesPool.find((r) => !list.some((s) => s.id === r.id)) ||
         extraRecipesPool[0];
-      const updated = saved.some((s) => s.id === nextRecipe.id)
-        ? saved
-        : [...saved, nextRecipe];
-      localStorage.setItem(`${prefix}_recipes`, JSON.stringify(updated));
+      const updated = list.some((s) => s.id === nextRecipe.id)
+        ? list
+        : [...list, nextRecipe];
+      writeUserJson(ctx, "_recipes", updated);
       return { data: { recipes: updated } };
     }
 
@@ -889,14 +881,13 @@ export const api = {
   },
 
   delete: async (url) => {
-    const prefix = await getStoragePrefix();
+    const ctx = await getStorageContexts();
     if (url.includes("/diary")) {
       const id = url.split("/").pop();
-      const saved = JSON.parse(
-        localStorage.getItem(`${prefix}_diary`) || "[]"
-      );
-      const updated = saved.filter((item) => String(item.id) !== String(id));
-      localStorage.setItem(`${prefix}_diary`, JSON.stringify(updated));
+      const saved = readUserJson(ctx, "_diary") || [];
+      const list = Array.isArray(saved) ? saved : [];
+      const updated = list.filter((item) => String(item.id) !== String(id));
+      writeUserJson(ctx, "_diary", updated);
     }
     return { data: { success: true } };
   },
