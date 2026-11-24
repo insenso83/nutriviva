@@ -351,4 +351,4 @@ const shoppingPools = [
       reparto: "Latticini e Uova",
       items: [
         { name: "Yogurt greco 0%", qty: "4 confezioni" },
-        { name: "Uova fresche", qty: "1 confezione
+       { name: "Uova fresche", qty: "1 confezione" },
