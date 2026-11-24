@@ -351,43 +351,4 @@ const shoppingPools = [
       reparto: "Latticini e Uova",
       items: [
         { name: "Yogurt greco 0%", qty: "4 confezioni" },
-        { name: "Uova fresche", qty: "1 confezione" },
-      ],
-    },
-    {
-      reparto: "Dispensa e Cereali",
-      items: [{ name: "Riso basmati", qty: "1 kg" }],
-    },
-  ],
-  [
-    {
-      reparto: "Frutta e Verdura",
-      items: [
-        { name: "Zucchine fresche", qty: "500 g" },
-        { name: "Spinaci", qty: "400 g" },
-      ],
-    },
-    {
-      reparto: "Carne e Pesce",
-      items: [
-        { name: "Fesa di tacchino", qty: "500 g" },
-        { name: "Orata sfilettata", qty: "2 filetti" },
-      ],
-    },
-    {
-      reparto: "Dispensa e Cereali",
-      items: [{ name: "Fiocchi d'avena", qty: "500 g" }],
-    },
-  ],
-  [
-    {
-      reparto: "Latticini e Uova",
-      items: [
-        { name: "Fiocchi di latte", qty: "2 confezioni" },
-        { name: "Parmigiano Reggiano", qty: "200 g" },
-      ],
-    },
-    {
-      reparto: "Dispensa e Cereali",
-      items: [
-        { name: "Pasta integrale",
+        { name: "Uova fresche", qty: "1 confezione
