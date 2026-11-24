@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { Leaf } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
-import { apiError } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -41,7 +40,12 @@ export default function AuthPage() {
       }
     } catch (err) {
       console.error("Auth error:", err);
-      toast.error(apiError(err) || "Errore imprevisto");
+      const message =
+        err?.message ||
+        err?.error_description ||
+        (typeof err === "string" ? err : null) ||
+        "Errore imprevisto";
+      toast.error(message);
     } finally {
       setLoading(false);
     }
