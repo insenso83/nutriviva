@@ -80,17 +80,43 @@ export default function MealPlanViewer({ plan, profile, generating, onGenerate, 
     if (!customText.trim()) return;
     setCustomLoading(true);
     try {
-      const { data: res } = await api.post("/plan/custom-meal", { day, mealKey: meal.key, ingredients: customText, currentMeal: meal, onlyThese });
-      const days = data.days.map((d) => d.day !== day ? d : {
-        ...d, meals: d.meals.map((m) => m.key === meal.key ? res.meal : m),
-        totalCalories: (d.totalCalories || 0) - (meal.calories || 0) + (res.meal.calories || 0),
+      const { data: res } = await api.post("/plan/custom-meal", {
+        day,
+        mealKey: meal.key,
+        ingredients: customText,
+        currentMeal: meal,
+        onlyThese,
       });
+      const composedMeal = res?.meal;
+      if (!composedMeal) {
+        toast.error("Risposta del pasto non valida dal server");
+        return;
+      }
+      const nextCalories = composedMeal.calories ?? meal.calories ?? 0;
+      const days = data.days.map((d) =>
+        d.day !== day
+          ? d
+          : {
+              ...d,
+              meals: d.meals.map((m) => (m.key === meal.key ? composedMeal : m)),
+              totalCalories: (d.totalCalories || 0) - (meal.calories || 0) + nextCalories,
+            }
+      );
       const newPlan = { ...data, days };
-      setData(newPlan); onSavePlan?.(newPlan);
-      setCustomOpen(null); setCustomText("");
-      toast.success(res.meal.added?.length ? `Pasto bilanciato! Aggiunto: ${res.meal.added.join(", ")}` : "Pasto bilanciato con i tuoi ingredienti!");
-    } catch (err) { toast.error(apiError(err.response?.data?.detail) || "Errore"); }
-    finally { setCustomLoading(false); }
+      setData(newPlan);
+      onSavePlan?.(newPlan);
+      setCustomOpen(null);
+      setCustomText("");
+      toast.success(
+        composedMeal.added?.length
+          ? `Pasto bilanciato! Aggiunto: ${composedMeal.added.join(", ")}`
+          : "Pasto bilanciato con i tuoi ingredienti!"
+      );
+    } catch (err) {
+      toast.error(apiError(err.response?.data?.detail) || "Errore");
+    } finally {
+      setCustomLoading(false);
+    }
   };
 
   useEffect(() => {
