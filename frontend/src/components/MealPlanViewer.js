@@ -264,7 +264,7 @@ function MealCard({
   );
 }
 
-export default function MealPlanViewer({ plan, profile, generating, onGenerate, onSavePlan, onFridgeUpdated }) {
+export default function MealPlanViewer({ plan, profile, generating, onGenerate, onSavePlan }) {
   const [view, setView] = useState("daily");
   const [dayIdx, setDayIdx] = useState(0);
   const [alts, setAlts] = useState({});
@@ -347,7 +347,7 @@ export default function MealPlanViewer({ plan, profile, generating, onGenerate, 
         </div>
         <h3 className="font-heading text-2xl font-bold text-primary">Nessun piano ancora</h3>
         <p className="text-muted-foreground mt-1 mb-5 max-w-md">
-          Genera il tuo piano alimentare personalizzato di 7 giorni basato su frigo, obiettivi e dieta.
+          Genera il tuo piano alimentare personalizzato di 7 giorni basato su obiettivi e dieta.
         </p>
         <Button
           data-testid="btn-generate-empty"
@@ -499,20 +499,15 @@ export default function MealPlanViewer({ plan, profile, generating, onGenerate, 
       if (eaten[id]) {
         await api.delete("/meals/eaten", { params: { planDay: day, mealKey: meal.key } });
         setEaten({ ...eaten, [id]: false });
-        toast("Pasto non più segnato (il frigo non viene ripristinato)");
+        toast("Pasto non più segnato come mangiato");
       } else {
-        const { data: res } = await api.post("/meals/eaten", {
+        await api.post("/meals/eaten", {
           planDay: day,
           mealKey: meal.key,
           meal: { ...shown, libero: meal.libero },
         });
         setEaten({ ...eaten, [id]: true });
-        if (res.fridgeItems) onFridgeUpdated?.(res.fridgeItems);
-        toast.success(
-          res.removed?.length
-            ? `Pasto segnato! Scalato dal frigo: ${res.removed.join(", ")}`
-            : "Pasto segnato come mangiato!"
-        );
+        toast.success("Pasto segnato come mangiato!");
       }
     } catch (err) {
       toast.error(apiError(err.response?.data?.detail) || "Errore");
