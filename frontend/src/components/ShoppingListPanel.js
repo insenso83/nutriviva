@@ -21,7 +21,8 @@ function buildDietShoppingList(profile) {
   const isKeto = /keto|chetogenic/.test(rawDiet);
   const isVegetarian = /vegetar/.test(rawDiet);
   const isHighProtein = /iperproteic|high.?protein|proteic/.test(rawDiet);
-  const isCleanBulk = /clean.?bulk|bulk|massa/.test(rawDiet) || (!isKeto && !isVegetarian && !isHighProtein);
+  const isCleanBulk =
+    /clean.?bulk|bulk|massa/.test(rawDiet) || (!isKeto && !isVegetarian && !isHighProtein);
 
   let categories = [];
 
@@ -176,7 +177,9 @@ function buildDietShoppingList(profile) {
   if (restrictions.includes("lattos")) {
     categories = categories.map((c) => ({
       ...c,
-      items: c.items.filter((it) => !/yogurt|formagg|mascarpone|ricotta|fiocchi di latte|latticin/i.test(it.name)),
+      items: c.items.filter(
+        (it) => !/yogurt|formagg|mascarpone|ricotta|fiocchi di latte|latticin/i.test(it.name)
+      ),
     }));
   }
   if (restrictions.includes("glutin") || restrictions.includes("celiac")) {
@@ -195,6 +198,8 @@ export default function ShoppingListPanel({ profile }) {
   const [checked, setChecked] = useState({});
   const [newItem, setNewItem] = useState({ name: "", qty: "", reparto: "" });
 
+  const dietLabel = profile?.diet || profile?.goal || "Clean Bulk / Bilanciata";
+
   useEffect(() => {
     api
       .get("/shopping-list")
@@ -211,22 +216,14 @@ export default function ShoppingListPanel({ profile }) {
     setLoading(true);
     try {
       const keep = cats.find((c) => c.reparto === "Da ricomprare");
-      let suggested = [];
-      try {
-        const { data } = await api.post("/shopping-list");
-        suggested = data?.categories || [];
-      } catch {
-        suggested = [];
-      }
-      if (!suggested.length) {
-        suggested = buildDietShoppingList(profile);
-      }
+      const dietCategories = buildDietShoppingList(profile);
       const next = keep
-        ? [keep, ...suggested.filter((c) => c.reparto !== "Da ricomprare")]
-        : suggested;
+        ? [keep, ...dietCategories.filter((c) => c.reparto !== "Da ricomprare")]
+        : dietCategories;
+
       persist(next);
       setChecked({});
-      toast.success("Lista suggerita in base alla tua dieta!");
+      toast.success(`Lista generata per la dieta: ${dietLabel}`);
     } catch (err) {
       toast.error(apiError(err?.response?.data?.detail) || "Errore");
     } finally {
@@ -264,8 +261,6 @@ export default function ShoppingListPanel({ profile }) {
     setNewItem({ name: "", qty: "", reparto: "" });
   };
 
-  const dietLabel = profile?.diet || profile?.goal || "Clean Bulk / Bilanciata";
-
   return (
     <div className="max-w-4xl">
       <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
@@ -275,7 +270,9 @@ export default function ShoppingListPanel({ profile }) {
             <h2 className="font-heading text-2xl font-bold">Lista della Spesa</h2>
           </div>
           <p className="text-muted-foreground mt-1">
-            Schema per reparti guidato dalla tua dieta (<strong className="text-foreground">{dietLabel}</strong>): spunta ciò che compri e personalizzalo liberamente.
+            Schema per reparti guidato dalla tua dieta (
+            <strong className="text-foreground">{dietLabel}</strong>): spunta ciò che compri e
+            personalizzalo liberamente.
           </p>
         </div>
         <Button
