@@ -447,38 +447,52 @@ const buildPlanFromProfile = (profile = {}) => {
 
 const defaultPlan = buildPlanFromProfile({});
 
-// --- Bilanciamento e calcolo macro/calorie per ingredienti ---
+// --- Bilanciamento realistico porzioni e macro ---
 const FOOD_PROFILES = [
-  { match: ["burro d'arachidi", "burro arachidi", "peanut butter"], p: 25, c: 20, f: 50, defaultGrams: 15 },
-  { match: ["olio", "evo", "burro"], p: 0, c: 0, f: 92, defaultGrams: 10 },
-  { match: ["mandorle", "noci", "nocciole", "anacardi", "frutta secca", "pistacchi"], p: 20, c: 16, f: 54, defaultGrams: 20 },
-  { match: ["cioccolato", "fondente", "cacao"], p: 10, c: 35, f: 42, defaultGrams: 15 },
-  { match: ["whey", "proteine in polvere", "caseine", "proteina"], p: 78, c: 7, f: 6, defaultGrams: 30 },
-  { match: ["albume", "albumi"], p: 11, c: 0.7, f: 0.2, defaultGrams: 150 },
-  { match: ["uovo", "uova"], p: 12.5, c: 1, f: 10, defaultGrams: 60 },
-  { match: ["yogurt greco", "greco"], p: 10, c: 4, f: 1, defaultGrams: 170 },
-  { match: ["fiocchi di latte", "quark", "ricotta", "fiocchi"], p: 11, c: 4, f: 4, defaultGrams: 150 },
-  { match: ["mozzarella", "feta", "formaggio", "parmigiano"], p: 20, c: 2, f: 22, defaultGrams: 80 },
-  { match: ["latte", "bevanda vegetale", "latte di mandorla"], p: 3.4, c: 4.8, f: 1.5, defaultGrams: 200 },
-  { match: ["avena", "fiocchi d'avena", "farina d'avena"], p: 13, c: 60, f: 7, defaultGrams: 60 },
-  { match: ["riso", "basmati", "pasta", "gnocchi", "farro", "orzo", "couscous"], p: 8, c: 72, f: 1.5, defaultGrams: 80 },
-  { match: ["pane", "fette biscottate", "gallette", "crackers", "cereali"], p: 9, c: 65, f: 4, defaultGrams: 50 },
-  { match: ["pollo", "tacchino", "petto di pollo", "fesa"], p: 22, c: 0, f: 2.5, defaultGrams: 150 },
-  { match: ["manzo", "hamburger", "bovino", "vitello", "maiale"], p: 21, c: 0, f: 10, defaultGrams: 150 },
-  { match: ["salmone", "tonno", "merluzzo", "orata", "sgombro", "pesce"], p: 21, c: 0, f: 7, defaultGrams: 150 },
-  { match: ["fagioli", "lenticchie", "ceci", "piselli", "legumi"], p: 7, c: 18, f: 1, defaultGrams: 120 },
-  { match: ["banana", "mela", "pera", "frutti di bosco", "fragole", "arancia", "frutta"], p: 0.7, c: 13, f: 0.3, defaultGrams: 150 },
-  { match: ["avocado"], p: 2, c: 8, f: 15, defaultGrams: 70 },
-  { match: ["zucchine", "spinaci", "broccoli", "carciofi", "pomodori", "cetrioli", "insalata", "verdura", "verdure"], p: 1.5, c: 4, f: 0.3, defaultGrams: 150 },
+  { match: ["marmellata", "confettura", "miele", "sciroppo"], p: 0.4, c: 60, f: 0.1, defaultGrams: 25, minGrams: 10, maxGrams: 50 },
+  { match: ["burro d'arachidi", "burro arachidi", "peanut butter"], p: 25, c: 20, f: 50, defaultGrams: 15, minGrams: 5, maxGrams: 35 },
+  { match: ["olio", "evo", "burro"], p: 0, c: 0, f: 92, defaultGrams: 10, minGrams: 5, maxGrams: 25 },
+  { match: ["mandorle", "noci", "nocciole", "anacardi", "frutta secca", "pistacchi"], p: 20, c: 16, f: 54, defaultGrams: 15, minGrams: 5, maxGrams: 40 },
+  { match: ["cioccolato", "fondente", "cacao"], p: 10, c: 35, f: 42, defaultGrams: 15, minGrams: 5, maxGrams: 35 },
+  { match: ["whey", "proteine in polvere", "caseine", "proteina"], p: 78, c: 7, f: 6, defaultGrams: 30, minGrams: 15, maxGrams: 50 },
+  { match: ["albume", "albumi"], p: 11, c: 0.7, f: 0.2, defaultGrams: 200, minGrams: 80, maxGrams: 350 },
+  { match: ["uovo", "uova"], p: 12.5, c: 1, f: 10, defaultGrams: 60, minGrams: 50, maxGrams: 240 },
+  { match: ["yogurt greco", "greco"], p: 10, c: 4, f: 1, defaultGrams: 170, minGrams: 100, maxGrams: 300 },
+  { match: ["fiocchi di latte", "quark", "ricotta", "fiocchi"], p: 11, c: 4, f: 4, defaultGrams: 150, minGrams: 80, maxGrams: 250 },
+  { match: ["mozzarella", "feta", "formaggio", "parmigiano"], p: 20, c: 2, f: 22, defaultGrams: 60, minGrams: 20, maxGrams: 150 },
+  { match: ["latte", "bevanda vegetale", "latte di mandorla"], p: 3.4, c: 4.8, f: 1.5, defaultGrams: 200, minGrams: 100, maxGrams: 350 },
+  { match: ["farina", "avena", "fiocchi d'avena", "farina d'avena"], p: 12, c: 65, f: 5, defaultGrams: 55, minGrams: 25, maxGrams: 120 },
+  { match: ["riso", "basmati", "pasta", "gnocchi", "farro", "orzo", "couscous"], p: 8, c: 72, f: 1.5, defaultGrams: 80, minGrams: 40, maxGrams: 250 },
+  { match: ["pane", "fette biscottate", "gallette", "crackers", "cereali"], p: 9, c: 65, f: 4, defaultGrams: 45, minGrams: 20, maxGrams: 120 },
+  { match: ["pollo", "tacchino", "petto di pollo", "fesa"], p: 22, c: 0, f: 2.5, defaultGrams: 150, minGrams: 80, maxGrams: 300 },
+  { match: ["manzo", "hamburger", "bovino", "vitello", "maiale"], p: 21, c: 0, f: 10, defaultGrams: 150, minGrams: 80, maxGrams: 250 },
+  { match: ["salmone", "tonno", "merluzzo", "orata", "sgombro", "pesce"], p: 21, c: 0, f: 7, defaultGrams: 150, minGrams: 80, maxGrams: 250 },
+  { match: ["fagioli", "lenticchie", "ceci", "piselli", "legumi"], p: 7, c: 18, f: 1, defaultGrams: 120, minGrams: 60, maxGrams: 250 },
+  { match: ["banana", "mela", "pera", "frutti di bosco", "fragole", "arancia", "frutta"], p: 0.7, c: 13, f: 0.3, defaultGrams: 130, minGrams: 60, maxGrams: 250 },
+  { match: ["avocado"], p: 2, c: 8, f: 15, defaultGrams: 50, minGrams: 20, maxGrams: 120 },
+  { match: ["zucchine", "spinaci", "broccoli", "carciofi", "pomodori", "cetrioli", "insalata", "verdura", "verdure"], p: 1.5, c: 4, f: 0.3, defaultGrams: 150, minGrams: 80, maxGrams: 300 },
 ];
 
 const round1 = (n) => Math.round((Number(n) || 0) * 10) / 10;
 
-const parseIngredientEntry = (rawEntry) => {
+const findFoodProfile = (text) => {
+  const lower = String(text || "").toLowerCase();
+  return FOOD_PROFILES.find((fp) => fp.match.some((m) => lower.includes(m))) || null;
+};
+
+const canonicalFoodKey = (name) => {
+  const prof = findFoodProfile(name);
+  if (prof) return prof.match[0];
+  return String(name || "")
+    .toLowerCase()
+    .replace(/[^a-zàèéìòù\s]/gi, "")
+    .trim();
+};
+
+const parseIngredientEntry = (rawEntry, scaleFactor = 1) => {
   const text = String(rawEntry || "").trim();
   if (!text) return null;
 
-  // Cerca quantità iniziale o presente nel testo, es. "250g albume", "70 g fiocchi d'avena", "2 uova"
   const qtyMatch = text.match(/(\d+(?:[.,]\d+)?)\s*(kg|g|gr|grammi|ml|l)?/i);
   let grams = null;
   let hasExplicitQty = false;
@@ -488,45 +502,51 @@ const parseIngredientEntry = (rawEntry) => {
     const val = parseFloat(qtyMatch[1].replace(",", "."));
     const unit = (qtyMatch[2] || "").toLowerCase();
     if (!Number.isNaN(val)) {
-      if (unit === "kg" || unit === "l") {
-        grams = val * 1000;
-      } else {
-        grams = val;
-      }
+      grams = unit === "kg" || unit === "l" ? val * 1000 : val;
     }
   }
 
   const lower = text.toLowerCase();
-  const profileHit = FOOD_PROFILES.find((fp) =>
-    fp.match.some((m) => lower.includes(m))
-  );
+  const profileHit = findFoodProfile(lower);
 
-  // Pulisce il nome dell'ingrediente per usarlo nel titolo o formattarlo
-  const cleanedName = text
-    .replace(/^\d+(?:[.,]\d+)?\s*(kg|g|gr|grammi|ml|l)?\s*/i, "")
-    .replace(/\s*\d+(?:[.,]\d+)?\s*(kg|g|gr|grammi|ml|l)\s*/i, " ")
-    .trim() || text.trim();
+  const cleanedName =
+    text
+      .replace(/^\d+(?:[.,]\d+)?\s*(kg|g|gr|grammi|ml|l)?\s*/i, "")
+      .replace(/\s*\d+(?:[.,]\d+)?\s*(kg|g|gr|grammi|ml|l)\s*/i, " ")
+      .trim() || text.trim();
 
   if (!hasExplicitQty || grams === null) {
     if (profileHit) {
-      // Se l'utente scrive "2 uova" senza "g", moltiplica per ~60g a uovo
       if (/\buov[ao]\b/i.test(lower) && qtyMatch) {
-        const count = Math.max(1, Math.min(8, parseFloat(qtyMatch[1].replace(",", ".")) || 1));
+        const count = Math.max(
+          1,
+          Math.min(8, parseFloat(qtyMatch[1].replace(",", ".")) || 1)
+        );
         grams = count * 60;
       } else {
         grams = profileHit.defaultGrams;
       }
     } else {
-      grams = 80;
+      grams = 50;
     }
   }
 
+  let finalGrams = grams * (hasExplicitQty ? 1 : scaleFactor);
+  if (profileHit) {
+    const minG = hasExplicitQty ? Math.min(finalGrams, profileHit.minGrams) : profileHit.minGrams;
+    const maxG = hasExplicitQty ? Math.max(finalGrams, profileHit.maxGrams * 1.5) : profileHit.maxGrams;
+    finalGrams = Math.max(minG, Math.min(maxG, finalGrams));
+  } else if (!hasExplicitQty) {
+    finalGrams = Math.max(15, Math.min(150, finalGrams));
+  }
+
+  const roundedGrams = Math.round(finalGrams);
   const formattedItem = hasExplicitQty
     ? text.replace(/(\d+(?:[.,]\d+)?)\s*(g|gr|grammi)\b/i, (_, n) => `${n} g`)
-    : `${Math.round(grams)} g ${cleanedName}`;
+    : `${roundedGrams} g ${cleanedName}`;
 
   const per100 = profileHit || { p: 6, c: 15, f: 3 };
-  const factor = grams / 100;
+  const factor = roundedGrams / 100;
   const protein = round1(per100.p * factor);
   const carbs = round1(per100.c * factor);
   const fats = round1(per100.f * factor);
@@ -535,7 +555,9 @@ const parseIngredientEntry = (rawEntry) => {
   return {
     raw: text,
     name: cleanedName,
-    grams: Math.round(grams),
+    foodKey: canonicalFoodKey(cleanedName),
+    grams: roundedGrams,
+    hasExplicitQty,
     formattedItem,
     calories,
     protein,
@@ -544,8 +566,11 @@ const parseIngredientEntry = (rawEntry) => {
   };
 };
 
-const computeMealFromItems = (items = []) => {
-  const parsed = items.map(parseIngredientEntry).filter(Boolean);
+const computeMealFromItems = (items = [], scaleFactor = 1) => {
+  const parsed = items
+    .map((it) => parseIngredientEntry(it, scaleFactor))
+    .filter(Boolean);
+
   const totals = parsed.reduce(
     (acc, p) => {
       acc.protein = round1(acc.protein + p.protein);
@@ -557,17 +582,35 @@ const computeMealFromItems = (items = []) => {
     { calories: 0, protein: 0, carbs: 0, fats: 0 }
   );
 
-  // Assicura che le calorie siano coerenti con i macro calcolati
-  if (totals.calories === 0 && (totals.protein || totals.carbs || totals.fats)) {
-    totals.calories = Math.round(
-      totals.protein * 4 + totals.carbs * 4 + totals.fats * 9
-    );
-  }
-
   return {
     parsed,
     formattedItems: parsed.map((p) => p.formattedItem),
     ...totals,
+  };
+};
+
+const mergeItemsWithoutDuplicates = (existingItems = [], incomingRawItems = []) => {
+  const existingParsed = existingItems.map((i) => parseIngredientEntry(i, 1)).filter(Boolean);
+  const incomingParsed = incomingRawItems.map((i) => parseIngredientEntry(i, 1)).filter(Boolean);
+
+  const mergedMap = new Map();
+  for (const item of existingParsed) {
+    mergedMap.set(item.foodKey, item.formattedItem);
+  }
+
+  const addedOrUpdated = [];
+  for (const item of incomingParsed) {
+    // Se l'ingrediente è già presente nel pasto e l'utente ha specificato una quantità esplicita, aggiorna quel valore;
+    // altrimenti lo aggiunge solo se non c'è già con lo stesso profilo.
+    if (!mergedMap.has(item.foodKey) || item.hasExplicitQty) {
+      mergedMap.set(item.foodKey, item.formattedItem);
+      addedOrUpdated.push(item.formattedItem);
+    }
+  }
+
+  return {
+    mergedItems: Array.from(mergedMap.values()),
+    addedOrUpdated,
   };
 };
 
@@ -984,35 +1027,60 @@ export const api = {
         .map((s) => s.trim())
         .filter(Boolean);
 
-      const parsedNew = rawSegments.map(parseIngredientEntry).filter(Boolean);
-      const newFormatted = parsedNew.map((p) => p.formattedItem);
-      const newNames = parsedNew.map((p) => p.name);
+      const targetCalories = Number(currentMeal?.calories) || 0;
 
-      const existingItems = onlyThese ? [] : [...(currentMeal.items || [])];
-      const combinedItems = [...existingItems, ...newFormatted];
-      const calc = computeMealFromItems(combinedItems);
+      let workingItems = [];
+      let addedSummary = [];
 
-      const titleText = newNames.join(", ");
+      if (onlyThese) {
+        const soloCalc = computeMealFromItems(rawSegments, 1);
+        let scale = 1;
+        // Se l'utente non ha scritto grammature su tutto e il totale è molto basso rispetto al pasto, calibra leggermente
+        if (targetCalories > 0 && soloCalc.calories > 0 && soloCalc.calories < targetCalories * 0.55) {
+          scale = Math.min(1.4, Math.max(0.8, targetCalories / soloCalc.calories));
+        }
+        const scaledCalc = computeMealFromItems(rawSegments, scale);
+        workingItems = scaledCalc.formattedItems;
+      } else {
+        const { mergedItems, addedOrUpdated } = mergeItemsWithoutDuplicates(
+          currentMeal.items || [],
+          rawSegments
+        );
+        addedSummary = addedOrUpdated;
+
+        let baseCalc = computeMealFromItems(mergedItems, 1);
+        if (targetCalories > 0 && baseCalc.calories > targetCalories * 1.25) {
+          const ratio = Math.max(0.65, targetCalories / baseCalc.calories);
+          baseCalc = computeMealFromItems(mergedItems, ratio);
+        }
+        workingItems = baseCalc.formattedItems;
+      }
+
+      const finalCalc = computeMealFromItems(workingItems, 1);
+      const parsedInputNames = rawSegments
+        .map((s) => parseIngredientEntry(s, 1)?.name)
+        .filter(Boolean);
+
       const customMeal = {
         ...currentMeal,
         key: mealKey || currentMeal.key,
         title: onlyThese
-          ? `Pasto con ${titleText}`
-          : `${currentMeal.title || "Pasto"} + ${titleText}`,
-        items: calc.formattedItems,
-        calories: calc.calories,
-        protein: calc.protein,
-        carbs: calc.carbs,
-        fats: calc.fats,
+          ? `Pasto con ${parsedInputNames.join(", ")}`
+          : `${currentMeal.title || "Pasto"} (${parsedInputNames.join(", ")})`,
+        items: finalCalc.formattedItems,
+        calories: finalCalc.calories,
+        protein: finalCalc.protein,
+        carbs: finalCalc.carbs,
+        fats: finalCalc.fats,
         recipe: onlyThese
-          ? `Prepara il pasto usando: ${calc.formattedItems.join(", ")}.`
+          ? `Prepara il pasto usando: ${finalCalc.formattedItems.join(", ")}.`
           : currentMeal.recipe ||
-            `Prepara il pasto combinando: ${calc.formattedItems.join(", ")}.`,
+            `Prepara il pasto combinando: ${finalCalc.formattedItems.join(", ")}.`,
         custom: true,
-        added: onlyThese ? [] : newFormatted,
+        added: onlyThese ? [] : addedSummary,
         note: onlyThese
-          ? "Porzioni stimate solo con i tuoi ingredienti"
-          : "Porzioni e macro ricalcolati con i tuoi ingredienti",
+          ? "Porzioni bilanciate solo con i tuoi ingredienti"
+          : "Pasto aggiornato senza duplicati e macro ricalcolati",
       };
 
       updateMealInSavedPlan(ctx, day, mealKey, customMeal);
@@ -1074,7 +1142,6 @@ export const api = {
         custom: false,
       };
 
-      // Salva anche nel piano su localStorage così al refresh non torna indietro
       if (day && mealKey) {
         updateMealInSavedPlan(ctx, day, mealKey, alternativeMeal);
       }
