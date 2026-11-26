@@ -440,12 +440,27 @@ export default function MealPlanViewer({ plan, profile, generating, onGenerate, 
         onlyThese,
       });
 
+      const mealPayload = res?.meal || res?.updatedMeal || (res?.title || res?.items ? res : null);
+
+      if (!mealPayload) {
+        toast.error("Risposta del bilanciamento senza dati del pasto");
+        return;
+      }
+
       const updatedMeal = {
         ...meal,
-        ...(res?.meal || {}),
-        key: res?.meal?.key || meal.key,
-        calories: res?.meal?.calories ?? meal?.calories ?? 0,
+        ...mealPayload,
+        key: mealPayload.key || meal.key,
+        calories: mealPayload.calories ?? meal?.calories ?? 0,
+        custom: true,
       };
+
+      const id = `${day}-${meal.key}`;
+      setAlts((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
 
       const oldMealCalories = meal?.calories ?? 0;
       const newMealCalories = updatedMeal.calories ?? 0;
@@ -462,7 +477,7 @@ export default function MealPlanViewer({ plan, profile, generating, onGenerate, 
 
       const newPlan = { ...data, days };
       setData(newPlan);
-      onSavePlan?.(newPlan);
+      await onSavePlan?.(newPlan);
       setCustomOpen(null);
       setCustomText("");
       toast.success(
