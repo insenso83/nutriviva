@@ -166,12 +166,12 @@ const getStorageContexts = async () => {
 };
 
 const readUserJson = ({ idPrefix, emailKey }, suffix) => {
-  const keysToTry = [
+  const userKeys = [
     `${idPrefix}${suffix}`,
     emailKey ? `${emailKey}${suffix}` : null,
   ].filter(Boolean);
 
-  for (const key of keysToTry) {
+  for (const key of userKeys) {
     try {
       const raw = localStorage.getItem(key);
       if (raw) {
@@ -182,19 +182,40 @@ const readUserJson = ({ idPrefix, emailKey }, suffix) => {
       }
     } catch {}
   }
+
+  // Fallback su chiave guest se l'utente rientra o cambia identificativo sessione
+  const guestKey = `nv_guest${suffix}`;
+  try {
+    const rawGuest = localStorage.getItem(guestKey);
+    if (rawGuest) {
+      const parsedGuest = JSON.parse(rawGuest);
+      if (parsedGuest && typeof parsedGuest === "object") {
+        userKeys.forEach((k) => {
+          try {
+            localStorage.setItem(k, rawGuest);
+          } catch {}
+        });
+        return parsedGuest;
+      }
+    }
+  } catch {}
+
   return null;
 };
 
 const writeUserJson = ({ idPrefix, emailKey }, suffix, value) => {
   const serialized = JSON.stringify(value);
-  try {
-    localStorage.setItem(`${idPrefix}${suffix}`, serialized);
-  } catch {}
-  if (emailKey) {
+  const targets = [
+    `${idPrefix}${suffix}`,
+    emailKey ? `${emailKey}${suffix}` : null,
+    `nv_guest${suffix}`,
+  ].filter(Boolean);
+
+  targets.forEach((key) => {
     try {
-      localStorage.setItem(`${emailKey}${suffix}`, serialized);
+      localStorage.setItem(key, serialized);
     } catch {}
-  }
+  });
 };
 
 const clearGuestStorage = () => {
