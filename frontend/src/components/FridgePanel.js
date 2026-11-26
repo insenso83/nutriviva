@@ -1,6 +1,15 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Refrigerator, RefreshCw, Save, AlertTriangle, Loader2, ChefHat, ScanText } from "lucide-react";
+import {
+  Refrigerator,
+  RefreshCw,
+  Save,
+  AlertTriangle,
+  Loader2,
+  ChefHat,
+  ScanText,
+  CheckCircle2,
+} from "lucide-react";
 import LabelScanner from "@/components/LabelScanner";
 import { api, apiError } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -22,6 +31,10 @@ const normalizeFridgeItems = (raw) => {
 
 export default function FridgePanel({ profile, onSaved, onGenerate, generating }) {
   const [items, setItems] = useState(() => normalizeFridgeItems(profile?.fridgeItems));
+  const [fridgeComplete, setFridgeComplete] = useState(() =>
+    Boolean(profile?.fridgeComplete) && normalizeFridgeItems(profile?.fridgeItems).length > 0
+  );
+  const [confirmingComplete, setConfirmingComplete] = useState(false);
   const [saving, setSaving] = useState(false);
   const [warnings, setWarnings] = useState([]);
   const [checking, setChecking] = useState(false);
@@ -30,8 +43,16 @@ export default function FridgePanel({ profile, onSaved, onGenerate, generating }
   const [labelOpen, setLabelOpen] = useState(false);
 
   useEffect(() => {
-    setItems(normalizeFridgeItems(profile?.fridgeItems));
-  }, [profile?.fridgeItems]);
+    const normalized = normalizeFridgeItems(profile?.fridgeItems);
+    setItems(normalized);
+    setFridgeComplete(Boolean(profile?.fridgeComplete) && normalized.length > 0);
+  }, [profile?.fridgeItems, profile?.fridgeComplete]);
+
+  const handleItemsChange = (next) => {
+    const normalized = normalizeFridgeItems(next);
+    setItems(normalized);
+    setFridgeComplete(false);
+  };
 
   const deplete = async (it) => {
     const itemStr = String(it || "");
@@ -41,9 +62,14 @@ export default function FridgePanel({ profile, onSaved, onGenerate, generating }
       .replace(/ \[.*\]/, "")
       .replace(/^\d+([.,]\d+)?\s*(pz|g|kg|ml|l|conf)\s+/i, "");
     setItems(next);
+    setFridgeComplete(false);
     try {
-      const { data } = await api.put("/profile", { fridgeItems: next });
-      if (data?.profile) onSaved(data.profile);
+      const { data } = await api.put("/profile", {
+        fridgeItems: next,
+        fridgeComplete: false,
+      });
+      if (data?.profile) onSaved?.(data.profile);
+      else if (data && !data.error) onSaved?.(data);
       await api.post("/shopping-list/add", { name, reparto: "Da ricomprare" });
       toast.success(`${name}: esaurito, aggiunto alla lista della spesa`);
     } catch (err) {
@@ -52,24 +78,58 @@ export default function FridgePanel({ profile, onSaved, onGenerate, generating }
   };
 
   const addScanned = async (label) => {
-    const cleanLabel = typeof label === "string" ? label : label?.name || label?.label || String(label || "");
+    const cleanLabel =
+      typeof label === "string" ? label : label?.name || label?.label || String(label || "");
     if (!cleanLabel.trim()) return;
     const next = [...items, cleanLabel];
     setItems(next);
+    setFridgeComplete(false);
     setLabelOpen(false);
     try {
-      const { data } = await api.put("/profile", { fridgeItems: next });
-      if (data?.profile) onSaved(data.profile);
-      toast.success("Prodotto aggiunto al frigo!");
+      const { data } = await api.put("/profile", {
+        fridgeItems: next,
+        fridgeComplete: false,
+      });
+      if (data?.profile) onSaved?.(data.profile);
+      else if (data && !data.error) onSaved?.(data);
+      toast.success("Prodotto aggiunto al frigo! Conferma 'Frigo completo' per rigenerare.");
     } catch (err) {
       toast.error(apiError(err?.response?.data?.detail || err));
+    }
+  };
+
+  const markFridgeComplete = async () => {
+    if (items.length === 0) {
+      toast.error("Aggiungi almeno un ingrediente prima di segnare il frigo completo.");
+      return;
+    }
+    setConfirmingComplete(true);
+    try {
+      const { data } = await api.post("/fridge/complete", {
+        fridgeItems: items,
+        fridgeComplete: true,
+      });
+      setFridgeComplete(true);
+      if (data?.profile) onSaved?.(data.profile);
+      else if (onSaved) {
+        onSaved({ ...(profile || {}), fridgeItems: items, fridgeComplete: true });
+      }
+      toast.success("Frigo completo! Ora puoi generare il piano dai tuoi ingredienti.");
+    } catch (err) {
+      toast.error(apiError(err?.response?.data?.detail || err));
+    } finally {
+      setConfirmingComplete(false);
     }
   };
 
   const quickRecipe = async () => {
     setRecipeLoading(true);
     try {
-      await api.put("/profile", { ...profile, fridgeItems: items });
+      await api.put("/profile", {
+        ...profile,
+        fridgeItems: items,
+        fridgeComplete,
+      });
       const { data } = await api.post("/fridge/recipe");
       setRecipe(data);
     } catch (err) {
@@ -97,19 +157,38 @@ export default function FridgePanel({ profile, onSaved, onGenerate, generating }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const save = async (regen) => {
+    if (regen && (!fridgeComplete || items.length === 0)) {
+      toast.error("Premi prima 'Frigo completo' per generare i pasti dal frigo.");
+      return;
+    }
+
     setSaving(true);
     try {
-      const { data } = await api.put("/profile", { ...profile, fridgeItems: items });
-      if (data?.profile) onSaved(data.profile);
+      const { data } = await api.put("/profile", {
+        ...profile,
+        fridgeItems: items,
+        fridgeComplete: regen ? true : fridgeComplete,
+      });
+      if (data?.profile) onSaved?.(data.profile);
+      else if (data && !data.error) onSaved?.(data);
       toast.success("Frigo aggiornato!");
-      if (regen) onGenerate();
-      else check();
+      if (regen) {
+        await onGenerate?.({
+          fromFridge: true,
+          fridgeComplete: true,
+          fridgeItems: items,
+        });
+      } else {
+        check();
+      }
     } catch (err) {
       toast.error(apiError(err?.response?.data?.detail || err));
     } finally {
       setSaving(false);
     }
   };
+
+  const canGenerateFromFridge = fridgeComplete && items.length > 0;
 
   return (
     <div className="max-w-3xl">
@@ -118,7 +197,7 @@ export default function FridgePanel({ profile, onSaved, onGenerate, generating }
         <h2 className="font-heading text-2xl font-bold">Frigo & Dispensa</h2>
       </div>
       <p className="text-muted-foreground mb-5">
-        Indica cosa hai in casa e in che quantità: rigenera il piano per adattare i pasti agli ingredienti disponibili.
+        Il piano resta stabile di default: quando hai finito di inserire ciò che hai in casa, conferma &ldquo;Frigo completo&rdquo; per generare i pasti dal frigo.
       </p>
 
       <div className="rounded-2xl border border-border bg-card p-6">
@@ -129,43 +208,113 @@ export default function FridgePanel({ profile, onSaved, onGenerate, generating }
             .sort((a, b) => a.d.localeCompare(b.d));
           return (
             soon.length > 0 && (
-              <div className="mb-4 rounded-xl bg-accent/15 border border-accent/40 p-3 text-sm text-accent-foreground" data-testid="expiry-alert">
+              <div
+                className="mb-4 rounded-xl bg-accent/15 border border-accent/40 p-3 text-sm text-accent-foreground"
+                data-testid="expiry-alert"
+              >
                 <strong>⏳ In scadenza:</strong>{" "}
                 {soon
                   .map(
                     (x) =>
                       `${x.it.replace(/ \(scade il .*\)/, "")} (${
-                        daysLeft(x.d) < 0 ? "scaduto" : daysLeft(x.d) === 0 ? "oggi" : `tra ${daysLeft(x.d)} gg`
+                        daysLeft(x.d) < 0
+                          ? "scaduto"
+                          : daysLeft(x.d) === 0
+                          ? "oggi"
+                          : `tra ${daysLeft(x.d)} gg`
                       })`
                   )
                   .join(", ")}
-                . Rigenera il piano: verranno usati per primi.
+                . Completa il frigo e rigenera il piano: verranno usati per primi.
               </div>
             )
           );
         })()}
-        <Button variant="outline" data-testid="btn-open-label-scanner" onClick={() => setLabelOpen(true)} className="rounded-full border-accent mb-4">
+
+        <Button
+          variant="outline"
+          data-testid="btn-open-label-scanner"
+          onClick={() => setLabelOpen(true)}
+          className="rounded-full border-accent mb-4"
+        >
           <ScanText className="w-4 h-4 mr-1.5" />
           Scansiona etichetta nutrizionale
         </Button>
-        {labelOpen && <LabelScanner onClose={() => setLabelOpen(false)} onConfirm={addScanned} />}
+
+        {labelOpen && (
+          <LabelScanner onClose={() => setLabelOpen(false)} onConfirm={addScanned} />
+        )}
+
         <FridgeItemInput
           items={items}
-          onChange={(next) => setItems(normalizeFridgeItems(next))}
+          onChange={handleItemsChange}
           warnItems={warnings.map((w) => w.item)}
           onDeplete={deplete}
         />
+
+        <div className="mt-4 flex items-center justify-between gap-3 rounded-xl border border-border/70 bg-muted/30 px-4 py-2.5 text-sm">
+          <span className="text-muted-foreground">
+            {canGenerateFromFridge
+              ? "Frigo confermato: generazione pasti dal frigo abilitata."
+              : "Conferma 'Frigo completo' quando hai inserito tutti gli ingredienti per sbloccare la generazione."}
+          </span>
+          <Button
+            type="button"
+            variant={canGenerateFromFridge ? "secondary" : "outline"}
+            size="sm"
+            data-testid="btn-fridge-complete"
+            onClick={markFridgeComplete}
+            disabled={confirmingComplete || items.length === 0}
+            className="rounded-full shrink-0"
+          >
+            {confirmingComplete ? (
+              <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
+            ) : (
+              <CheckCircle2 className="w-4 h-4 mr-1.5" />
+            )}
+            {canGenerateFromFridge ? "Frigo completo ✓" : "Frigo completo"}
+          </Button>
+        </div>
+
         <div className="flex flex-wrap gap-3 mt-6">
-          <Button variant="outline" data-testid="btn-save-fridge" onClick={() => save(false)} disabled={saving} className="rounded-full">
+          <Button
+            variant="outline"
+            data-testid="btn-save-fridge"
+            onClick={() => save(false)}
+            disabled={saving}
+            className="rounded-full"
+          >
             <Save className="w-4 h-4 mr-1.5" />
             Salva frigo
           </Button>
-          <Button data-testid="btn-save-regen-fridge" onClick={() => save(true)} disabled={saving || generating} className="rounded-full bg-primary">
+
+          <Button
+            data-testid="btn-save-regen-fridge"
+            onClick={() => save(true)}
+            disabled={saving || generating || !canGenerateFromFridge}
+            title={
+              !canGenerateFromFridge
+                ? "Conferma prima 'Frigo completo' per generare i pasti dal frigo"
+                : "Genera i pasti in base agli ingredienti nel frigo"
+            }
+            className="rounded-full bg-primary"
+          >
             <RefreshCw className={`w-4 h-4 mr-1.5 ${generating ? "animate-spin" : ""}`} />
             Salva e rigenera piano
           </Button>
-          <Button variant="outline" data-testid="btn-fridge-recipe" onClick={quickRecipe} disabled={recipeLoading || items.length === 0} className="rounded-full border-accent">
-            {recipeLoading ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <ChefHat className="w-4 h-4 mr-1.5" />}
+
+          <Button
+            variant="outline"
+            data-testid="btn-fridge-recipe"
+            onClick={quickRecipe}
+            disabled={recipeLoading || items.length === 0}
+            className="rounded-full border-accent"
+          >
+            {recipeLoading ? (
+              <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
+            ) : (
+              <ChefHat className="w-4 h-4 mr-1.5" />
+            )}
             Ricetta veloce dal frigo
           </Button>
         </div>
