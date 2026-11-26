@@ -29,8 +29,7 @@ export class apiError extends Error {
 const LOCAL_SESSION_KEY = "nv_local_auth_session";
 const LOCAL_USERS_KEY = "nv_local_auth_users";
 
-const normalizeEmail = (email) =>
-  String(email || "").trim().toLowerCase();
+const normalizeEmail = (email) => String(email || "").trim().toLowerCase();
 
 const makeEmailStorageKey = (email) =>
   normalizeEmail(email).replace(/[^a-z0-9]/g, "_");
@@ -85,9 +84,7 @@ const setLocalSessionUser = (userObj) => {
     id: userObj.id || makeLocalUserId(userObj.email),
     email: normalizeEmail(userObj.email),
     name:
-      userObj.name ||
-      normalizeEmail(userObj.email).split("@")[0] ||
-      "Utente",
+      userObj.name || normalizeEmail(userObj.email).split("@")[0] || "Utente",
     localFallback: true,
   };
   try {
@@ -106,14 +103,10 @@ const getLocalSessionUser = () => {
         id: parsed.id || makeLocalUserId(parsed.email),
         email: normalizeEmail(parsed.email),
         name:
-          parsed.name ||
-          normalizeEmail(parsed.email).split("@")[0] ||
-          "Utente",
+          parsed.name || normalizeEmail(parsed.email).split("@")[0] || "Utente",
         user_metadata: {
           name:
-            parsed.name ||
-            normalizeEmail(parsed.email).split("@")[0] ||
-            "Utente",
+            parsed.name || normalizeEmail(parsed.email).split("@")[0] || "Utente",
         },
         localFallback: true,
       };
@@ -161,7 +154,9 @@ const getActiveSessionUser = async ({ forceRefresh = false } = {}) => {
 const getStorageContexts = async () => {
   const user = await getActiveSessionUser();
   const idPrefix = user?.id ? `nv_${user.id}` : "nv_guest";
-  const emailKey = user?.email ? `nv_email_${makeEmailStorageKey(user.email)}` : null;
+  const emailKey = user?.email
+    ? `nv_email_${makeEmailStorageKey(user.email)}`
+    : null;
   return { user, idPrefix, emailKey };
 };
 
@@ -183,7 +178,6 @@ const readUserJson = ({ idPrefix, emailKey }, suffix) => {
     } catch {}
   }
 
-  // Fallback su chiave guest se l'utente rientra o cambia identificativo sessione
   const guestKey = `nv_guest${suffix}`;
   try {
     const rawGuest = localStorage.getItem(guestKey);
@@ -249,9 +243,7 @@ const defaultProfile = {
     braccia: "",
   },
   goals: [],
-  dietType: "",
-  fridgeItems: [],
-  fridgeComplete: false,
+  dietType: "Clean Bulk",
   supplements: [],
   dietActive: false,
   dietStartDate: "",
@@ -261,85 +253,244 @@ const defaultProfile = {
   onboarding_completed: false,
 };
 
-const createDayMeals = () => [
-  {
-    key: "colazione",
-    title: "Porridge proteico con uovo",
-    calories: 585,
-    protein: 48.6,
-    carbs: 71.3,
-    fats: 10.6,
-    items: [
-      "300 g latte scremato",
-      "25 g whey isolate",
-      "80 g fiocchi d'avena",
-      "50 g uovo intero",
-      "60 g confettura light",
-    ],
-    recipe:
-      "Cuoci i fiocchi d'avena nel latte, mescolando fino a ottenere un porridge cremoso.",
-  },
-  {
-    key: "spuntino_mattina",
-    title: "Yogurt greco, cereali e mela",
-    calories: 300,
-    protein: 24,
-    carbs: 45,
-    fats: 4,
-    items: ["200 g yogurt greco 0%", "30 g cereali", "150 g mela"],
-    recipe: "Servi lo yogurt con cereali e mela a pezzi.",
-  },
-  {
-    key: "pranzo",
-    title: "Gnocchi con hamburger e carciofi",
-    calories: 1181,
-    protein: 53.5,
-    carbs: 126.7,
-    fats: 41.1,
-    items: [
-      "250 g gnocchi",
-      "200 g hamburger bovino",
-      "100 g carciofi",
-      "10 g olio EVO",
-    ],
-    recipe: "Cuoci gli gnocchi in acqua e l'hamburger in padella.",
-  },
-  {
-    key: "spuntino_pomeriggio",
-    title: "Post-allenamento: whey e banana",
-    calories: 300,
-    protein: 29,
-    carbs: 43,
-    fats: 3,
-    items: ["30 g whey isolate", "120 g banana", "25 g fette biscottate"],
-    recipe: "Assumi le whey con acqua e accompagna con banana.",
-  },
-  {
-    key: "cena",
-    title: "Bowl di salmone, tonno e riso",
-    calories: 534,
-    protein: 47.3,
-    carbs: 55.6,
-    fats: 10.5,
-    items: [
-      "65 g filetto di salmone",
-      "60 g tonno",
-      "85 g fagioli",
-      "25 g riso basmati",
-    ],
-    recipe: "Salmone alla piastra con riso e legumi.",
-  },
-  {
-    key: "spuntino_prenanna",
-    title: "Quark e cioccolato fondente",
-    calories: 150,
-    protein: 20,
-    carbs: 9,
-    fats: 5,
-    items: ["150 g quark", "10 g cioccolato 85%"],
-    recipe: "Quark magro con cioccolato fondente.",
-  },
-];
+const MEAL_TEMPLATES = {
+  colazione: [
+    {
+      key: "colazione",
+      title: "Porridge d'avena con whey e mela",
+      calories: 490,
+      protein: 36,
+      carbs: 62,
+      fats: 10,
+      items: [
+        "70 g fiocchi d'avena",
+        "250 ml latte scremato o bevanda vegetale",
+        "25 g whey isolate",
+        "120 g mela a cubetti",
+      ],
+      recipe:
+        "Cuoci i fiocchi d'avena nel latte o acqua, unisci le whey a fine cottura e completa con la mela.",
+    },
+    {
+      key: "colazione",
+      title: "Pancake proteici con banana e miele",
+      calories: 515,
+      protein: 34,
+      carbs: 66,
+      fats: 11,
+      items: [
+        "60 g fiocchi d'avena o farina d'avena",
+        "150 g albume",
+        "1 uovo intero piccolo",
+        "100 g banana",
+        "10 g miele o confettura light",
+      ],
+      recipe:
+        "Frulla avena, albume, uovo e metà banana, cuoci in padella antiaderente e servi con il resto.",
+    },
+    {
+      key: "colazione",
+      title: "Pane integrale con uova e yogurt greco",
+      calories: 500,
+      protein: 32,
+      carbs: 54,
+      fats: 16,
+      items: [
+        "90 g pane integrale tostato",
+        "2 uova intere",
+        "150 g yogurt greco 0%",
+        "150 g frutti di bosco o arancia",
+      ],
+      recipe:
+        "Prepara le uova strapazzate o in camicia, servi sul pane tostato e accompagna con yogurt e frutta.",
+    },
+  ],
+  spuntino_mattina: [
+    {
+      key: "spuntino_mattina",
+      title: "Yogurt greco con frutta e mandorle",
+      calories: 295,
+      protein: 22,
+      carbs: 30,
+      fats: 9,
+      items: [
+        "180 g yogurt greco 0% o 2%",
+        "130 g mela o pera",
+        "12 g mandorle o noci",
+      ],
+      recipe: "Mescola lo yogurt con la frutta a pezzi e aggiungi la frutta secca.",
+    },
+    {
+      key: "spuntino_mattina",
+      title: "Gallette di riso con fesa di tacchino e frutto",
+      calories: 280,
+      protein: 24,
+      carbs: 36,
+      fats: 4,
+      items: [
+        "4 gallette di riso o mais",
+        "80 g fesa di tacchino o pollo",
+        "120 g frutta fresca",
+      ],
+      recipe: "Componi le gallette con la fesa e abbina il frutto.",
+    },
+  ],
+  pranzo: [
+    {
+      key: "pranzo",
+      title: "Riso basmati con petto di pollo e zucchine",
+      calories: 720,
+      protein: 48,
+      carbs: 92,
+      fats: 15,
+      items: [
+        "110 g riso basmati",
+        "180 g petto di pollo",
+        "200 g zucchine",
+        "12 g olio extravergine d'oliva",
+      ],
+      recipe:
+        "Lessa il riso basmati, cuoci il pollo alla piastra con le zucchine e condisci con olio EVO a crudo.",
+    },
+    {
+      key: "pranzo",
+      title: "Pasta integrale con tonno, pomodorini e rucola",
+      calories: 710,
+      protein: 44,
+      carbs: 90,
+      fats: 16,
+      items: [
+        "110 g pasta integrale",
+        "140 g tonno al naturale sgocciolato",
+        "180 g pomodorini e rucola",
+        "12 g olio extravergine d'oliva",
+      ],
+      recipe:
+        "Cuoci la pasta al dente e condiscila con tonno, pomodorini, rucola e olio EVO.",
+    },
+    {
+      key: "pranzo",
+      title: "Patate al forno con carne magra e broccoli",
+      calories: 735,
+      protein: 47,
+      carbs: 88,
+      fats: 18,
+      items: [
+        "320 g patate o patate dolci",
+        "170 g macinato magro di manzo o tacchino",
+        "200 g broccoli",
+        "12 g olio extravergine d'oliva",
+      ],
+      recipe:
+        "Cuoci le patate e i broccoli, rosola la carne magra e unisci l'olio EVO.",
+    },
+  ],
+  spuntino_pomeriggio: [
+    {
+      key: "spuntino_pomeriggio",
+      title: "Banana, fiocchi di latte e frutta secca",
+      calories: 310,
+      protein: 21,
+      carbs: 34,
+      fats: 9,
+      items: [
+        "150 g fiocchi di latte o ricotta",
+        "130 g banana",
+        "10 g noci o mandorle",
+      ],
+      recipe: "Servi i fiocchi di latte con la banana a fette e la frutta secca.",
+    },
+    {
+      key: "spuntino_pomeriggio",
+      title: "Pane integrale con crema d'arachidi e frutto",
+      calories: 325,
+      protein: 14,
+      carbs: 38,
+      fats: 12,
+      items: [
+        "50 g pane integrale",
+        "15 g burro d'arachidi 100%",
+        "150 g mela o banana",
+      ],
+      recipe: "Spalma il burro d'arachidi sul pane e accompagna con la frutta.",
+    },
+  ],
+  cena: [
+    {
+      key: "cena",
+      title: "Salmone al forno con riso o patate e spinaci",
+      calories: 640,
+      protein: 42,
+      carbs: 58,
+      fats: 24,
+      items: [
+        "160 g filetto di salmone",
+        "70 g riso basmati o 220 g patate",
+        "200 g spinaci",
+        "10 g olio extravergine d'oliva",
+      ],
+      recipe:
+        "Cuoci il salmone al forno o in padella, ripassa gli spinaci e accompagna con riso o patate.",
+    },
+    {
+      key: "cena",
+      title: "Merluzzo o orata con legumi e verdure",
+      calories: 590,
+      protein: 44,
+      carbs: 62,
+      fats: 15,
+      items: [
+        "200 g merluzzo o orata",
+        "140 g ceci o lenticchie lessati",
+        "200 g verdure miste",
+        "12 g olio extravergine d'oliva",
+      ],
+      recipe:
+        "Prepara il pesce con verdure e legumi e condisci con olio extravergine a crudo.",
+    },
+  ],
+  spuntino_prenanna: [
+    {
+      key: "spuntino_prenanna",
+      title: "Quark magro o yogurt greco con cacao",
+      calories: 185,
+      protein: 22,
+      carbs: 11,
+      fats: 5,
+      items: ["160 g quark magro o yogurt greco", "5 g cacao amaro", "8 g mandorle"],
+      recipe: "Mescola il quark o lo yogurt con il cacao amaro e aggiungi le mandorle.",
+    },
+    {
+      key: "spuntino_prenanna",
+      title: "Ricotta magra con cannella e frutta secca",
+      calories: 190,
+      protein: 18,
+      carbs: 10,
+      fats: 8,
+      items: ["140 g ricotta magra", "cannella q.b.", "10 g noci"],
+      recipe: "Lavora la ricotta con un pizzico di cannella e unisci le noci tritate.",
+    },
+  ],
+};
+
+const createDayMeals = (dayIndex = 0, variantSeed = 0) => {
+  const offset = dayIndex + variantSeed;
+  const pickSlot = (slotKey) => {
+    const pool = MEAL_TEMPLATES[slotKey] || [];
+    if (!pool.length) return null;
+    const item = pool[offset % pool.length];
+    return { ...item, items: [...item.items] };
+  };
+
+  return [
+    pickSlot("colazione"),
+    pickSlot("spuntino_mattina"),
+    pickSlot("pranzo"),
+    pickSlot("spuntino_pomeriggio"),
+    pickSlot("cena"),
+    pickSlot("spuntino_prenanna"),
+  ].filter(Boolean);
+};
 
 const DAYS_OF_WEEK = [
   "Lunedì",
@@ -399,8 +550,7 @@ const extractSelectedDayIndices = (profile = {}) => {
             item.checked ??
             item.isTraining;
           if (active === false) return;
-          const label =
-            item.day ?? item.label ?? item.name ?? item.key ?? item.id;
+          const label = item.day ?? item.label ?? item.name ?? item.key ?? item.id;
           if (label !== undefined) inspectValue(label);
         }
       });
@@ -525,8 +675,12 @@ const parseIngredientEntry = (rawEntry, scaleFactor = 1) => {
 
   let finalGrams = grams * (hasExplicitQty ? 1 : scaleFactor);
   if (profileHit) {
-    const minG = hasExplicitQty ? Math.min(finalGrams, profileHit.minGrams) : profileHit.minGrams;
-    const maxG = hasExplicitQty ? Math.max(finalGrams, profileHit.maxGrams * 1.5) : profileHit.maxGrams;
+    const minG = hasExplicitQty
+      ? Math.min(finalGrams, profileHit.minGrams)
+      : profileHit.minGrams;
+    const maxG = hasExplicitQty
+      ? Math.max(finalGrams, profileHit.maxGrams * 1.5)
+      : profileHit.maxGrams;
     finalGrams = Math.max(minG, Math.min(maxG, finalGrams));
   } else if (!hasExplicitQty) {
     finalGrams = Math.max(15, Math.min(150, finalGrams));
@@ -581,59 +735,6 @@ const computeMealFromItems = (items = [], scaleFactor = 1) => {
   };
 };
 
-const normalizeFridgeItems = (fridgeItems = []) => {
-  if (!Array.isArray(fridgeItems)) return [];
-  return fridgeItems
-    .map((item) => {
-      if (typeof item === "string") return item.trim();
-      if (item && typeof item === "object") {
-        const name = item.name || item.label || item.title || item.item || "";
-        const qty = item.qty || item.grams || item.quantity || "";
-        return qty ? `${qty} ${name}`.trim() : String(name).trim();
-      }
-      return "";
-    })
-    .filter(Boolean);
-};
-
-const buildMealsFromFridge = (fridgeItems = [], dayIndex = 0) => {
-  const normalized = normalizeFridgeItems(fridgeItems);
-  const baseMeals = createDayMeals();
-
-  if (normalized.length === 0) {
-    return baseMeals;
-  }
-
-  return baseMeals.map((meal, mealIdx) => {
-    const picked = [];
-    for (let i = 0; i < normalized.length; i += 1) {
-      const candidate = normalized[(dayIndex + mealIdx + i) % normalized.length];
-      if (!picked.some((p) => canonicalFoodKey(p) === canonicalFoodKey(candidate))) {
-        picked.push(candidate);
-      }
-      if (picked.length >= Math.min(3, normalized.length)) break;
-    }
-
-    const calc = computeMealFromItems(picked, 1);
-    const titleNames = calc.parsed.map((p) => p.name).filter(Boolean);
-
-    return {
-      ...meal,
-      title:
-        titleNames.length > 0
-          ? `${meal.title.split(":")[0]} con ${titleNames.join(", ")}`
-          : meal.title,
-      items: calc.formattedItems.length > 0 ? calc.formattedItems : meal.items,
-      calories: calc.calories > 0 ? calc.calories : meal.calories,
-      protein: calc.protein,
-      carbs: calc.carbs,
-      fats: calc.fats,
-      fromFridge: true,
-      recipe: `Pasto costruito dagli ingredienti del frigo: ${calc.formattedItems.join(", ")}.`,
-    };
-  });
-};
-
 const buildPlanFromProfile = (profile = {}, options = {}) => {
   let trainingIndices = extractSelectedDayIndices(profile);
 
@@ -650,15 +751,24 @@ const buildPlanFromProfile = (profile = {}, options = {}) => {
     }
   }
 
-  const shouldUseFridge =
-    Boolean(options?.fromFridge) &&
-    Boolean(profile?.fridgeComplete) &&
-    normalizeFridgeItems(profile?.fridgeItems).length > 0;
+  const dietLabel =
+    profile?.dietType || profile?.diet || profile?.goal || "Clean Bulk";
+  const variantSeed = Number(options?.seed) || 0;
 
   const days = DAYS_OF_WEEK.map((dayName, idx) => {
-    const meals = shouldUseFridge
-      ? buildMealsFromFridge(profile.fridgeItems, idx)
-      : createDayMeals();
+    const isTraining = trainingIndices.includes(idx);
+    const meals = createDayMeals(idx, variantSeed).map((m) => {
+      if (!isTraining) {
+        const adjCarbs = round1(Math.max(5, (m.carbs || 0) * 0.85));
+        const adjCal = Math.max(
+          100,
+          Math.round((m.protein || 0) * 4 + adjCarbs * 4 + (m.fats || 0) * 9)
+        );
+        return { ...m, carbs: adjCarbs, calories: adjCal };
+      }
+      return m;
+    });
+
     const dayCalories = meals.reduce(
       (sum, m) => sum + (Number(m?.calories) || 0),
       0
@@ -666,7 +776,7 @@ const buildPlanFromProfile = (profile = {}, options = {}) => {
 
     return {
       day: dayName,
-      dayType: trainingIndices.includes(idx) ? "allenamento" : "riposo",
+      dayType: isTraining ? "allenamento" : "riposo",
       totalCalories: dayCalories || 2350,
       meals,
     };
@@ -679,16 +789,13 @@ const buildPlanFromProfile = (profile = {}, options = {}) => {
     ) || 2350;
 
   return {
-    notes: shouldUseFridge
-      ? "Piano settimanale aggiornato in base agli ingredienti del frigo."
-      : "Piano settimanale bilanciato per la massa e definizione muscolare.",
+    notes: `Piano settimanale basato sulla dieta (${dietLabel}) e sui giorni di attività.`,
     dailyCalories: avgDailyCalories,
-    generatedFromFridge: shouldUseFridge,
     days,
   };
 };
 
-const defaultPlan = buildPlanFromProfile({});
+const defaultPlan = buildPlanFromProfile({}, { seed: 0 });
 
 const updateMealInSavedPlan = (ctx, day, mealKey, nextMeal) => {
   const savedPlan = readUserJson(ctx, "_plan");
@@ -875,9 +982,7 @@ export const api = {
           id: user.id,
           email: user.email,
           name:
-            user.user_metadata?.name ||
-            user.email?.split("@")[0] ||
-            "Utente",
+            user.user_metadata?.name || user.email?.split("@")[0] || "Utente",
         },
       };
     }
@@ -887,13 +992,9 @@ export const api = {
     if (url.includes("/profile")) {
       const saved = readUserJson(ctx, "_profile");
       const base = { ...defaultProfile, ...(saved || {}) };
-      const normalizedFridge = normalizeFridgeItems(base.fridgeItems);
       return {
         data: {
           ...base,
-          fridgeItems: normalizedFridge,
-          fridgeComplete:
-            Boolean(base.fridgeComplete) && normalizedFridge.length > 0,
           id: ctx.user?.id || base.id,
           email: ctx.user?.email || base.email,
           name: ctx.user?.user_metadata?.name || base.name,
@@ -951,7 +1052,7 @@ export const api = {
       return { data: { categories } };
     }
     if (url.includes("/recipes/light")) {
-      const saved = readUserJson(ctx, "_recipes");
+      const saved = readUserJson(ctx, "_recipes") || initialRecipes;
       const recipes = Array.isArray(saved) ? saved : initialRecipes;
       return { data: { recipes } };
     }
@@ -1076,56 +1177,12 @@ export const api = {
 
     const ctx = await getStorageContexts();
 
-    if (url.includes("/fridge/complete") || url.includes("/fridge/status")) {
-      const existing = readUserJson(ctx, "_profile") || {};
-      const nextItems = Array.isArray(body?.fridgeItems)
-        ? normalizeFridgeItems(body.fridgeItems)
-        : normalizeFridgeItems(existing.fridgeItems);
-      const isComplete =
-        typeof body?.fridgeComplete === "boolean"
-          ? body.fridgeComplete && nextItems.length > 0
-          : nextItems.length > 0;
-
-      const updated = {
-        ...defaultProfile,
-        ...existing,
-        ...body,
-        fridgeItems: nextItems,
-        fridgeComplete: isComplete,
-      };
-      writeUserJson(ctx, "_profile", updated);
-      return {
-        data: {
-          fridgeItems: updated.fridgeItems,
-          fridgeComplete: updated.fridgeComplete,
-          canGenerateFromFridge: updated.fridgeComplete,
-          profile: updated,
-        },
-      };
-    }
-
     if (url.includes("/profile")) {
       const existing = readUserJson(ctx, "_profile") || {};
-      const hasFridgeItemsInBody = Array.isArray(body?.fridgeItems);
-      const nextFridgeItems = hasFridgeItemsInBody
-        ? normalizeFridgeItems(body.fridgeItems)
-        : normalizeFridgeItems(existing.fridgeItems);
-
-      let nextFridgeComplete =
-        typeof body?.fridgeComplete === "boolean"
-          ? body.fridgeComplete && nextFridgeItems.length > 0
-          : Boolean(existing.fridgeComplete) && nextFridgeItems.length > 0;
-
-      if (hasFridgeItemsInBody && typeof body?.fridgeComplete !== "boolean") {
-        nextFridgeComplete = false;
-      }
-
       const updated = {
         ...defaultProfile,
         ...existing,
         ...body,
-        fridgeItems: nextFridgeItems,
-        fridgeComplete: nextFridgeComplete,
         completed: true,
         onboarding_completed: true,
       };
@@ -1133,9 +1190,7 @@ export const api = {
 
       const existingPlan = readUserJson(ctx, "_plan");
       if (!existingPlan || body?.regeneratePlan === true) {
-        const generatedPlan = buildPlanFromProfile(updated, {
-          fromFridge: Boolean(body?.fromFridge) && updated.fridgeComplete,
-        });
+        const generatedPlan = buildPlanFromProfile(updated, { seed: 1 });
         writeUserJson(ctx, "_plan", generatedPlan);
       }
 
@@ -1341,51 +1396,14 @@ export const api = {
       }
 
       const savedProfile = readUserJson(ctx, "_profile") || {};
-      const bodyFridgeItems = Array.isArray(body?.fridgeItems)
-        ? normalizeFridgeItems(body.fridgeItems)
-        : null;
-      const effectiveFridgeItems =
-        bodyFridgeItems || normalizeFridgeItems(savedProfile.fridgeItems);
-      const isFridgeComplete =
-        typeof body?.fridgeComplete === "boolean"
-          ? body.fridgeComplete && effectiveFridgeItems.length > 0
-          : Boolean(savedProfile.fridgeComplete) &&
-            effectiveFridgeItems.length > 0;
-
-      const wantsFridgePlan =
-        Boolean(body?.fromFridge) || Boolean(body?.useFridge);
-
-      if (wantsFridgePlan && !isFridgeComplete) {
-        throw new apiError(
-          "Completa prima il frigo per generare i pasti in base agli ingredienti disponibili.",
-          400
-        );
-      }
-
-      const mergedProfile = {
-        ...defaultProfile,
-        ...savedProfile,
-        fridgeItems: effectiveFridgeItems,
-        fridgeComplete: isFridgeComplete,
-      };
-
-      if (bodyFridgeItems || typeof body?.fridgeComplete === "boolean") {
-        writeUserJson(ctx, "_profile", mergedProfile);
-      }
-
+      const mergedProfile = { ...defaultProfile, ...savedProfile };
       const existingPlan = readUserJson(ctx, "_plan");
-      if (
-        !wantsFridgePlan &&
-        !body?.forceRegenerate &&
-        existingPlan &&
-        Array.isArray(existingPlan.days)
-      ) {
-        return { data: { status: "ready", plan: existingPlan } };
-      }
+      const nextSeed = ((Number(existingPlan?.seed) || 0) + 1) % 10;
 
-      const generatedPlan = buildPlanFromProfile(mergedProfile, {
-        fromFridge: wantsFridgePlan,
-      });
+      const generatedPlan = {
+        ...buildPlanFromProfile(mergedProfile, { seed: nextSeed }),
+        seed: nextSeed,
+      };
       writeUserJson(ctx, "_plan", generatedPlan);
       return { data: { status: "ready", plan: generatedPlan } };
     }
