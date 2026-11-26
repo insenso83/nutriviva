@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
-import { Leaf, LogOut, UtensilsCrossed, Scale, Smile, Pill, RefreshCw, CalendarDays, Refrigerator, ShoppingCart, CookingPot, Droplet, Camera, UserCog, BarChart3 } from "lucide-react";
+import { Leaf, LogOut, UtensilsCrossed, Scale, Smile, Pill, RefreshCw, CalendarDays, ShoppingCart, CookingPot, Droplet, Camera, UserCog, BarChart3 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -9,7 +9,6 @@ import MealPlanViewer from "@/components/MealPlanViewer";
 import CheckinsPanel from "@/components/CheckinsPanel";
 import SupplementsPanel from "@/components/SupplementsPanel";
 import CalendarCard from "@/components/CalendarCard";
-import FridgePanel from "@/components/FridgePanel";
 import ShoppingListPanel from "@/components/ShoppingListPanel";
 import RecipesPanel from "@/components/RecipesPanel";
 import WaterPanel from "@/components/WaterPanel";
@@ -21,7 +20,6 @@ const TABS = [
   { id: "plan", label: "Piano Pasti", icon: UtensilsCrossed },
   { id: "summary", label: "Riepilogo", icon: BarChart3 },
   { id: "profile", label: "Profilo", icon: UserCog },
-  { id: "fridge", label: "Frigo", icon: Refrigerator },
   { id: "shopping", label: "Spesa", icon: ShoppingCart },
   { id: "recipes", label: "Ricette", icon: CookingPot },
   { id: "photo", label: "Foto Pasto", icon: Camera },
@@ -156,10 +154,8 @@ export default function Dashboard() {
       </nav>
 
       <main className="max-w-7xl mx-auto p-4 sm:p-6 animate-fade-up" key={tab}>
-        {tab === "plan" && <MealPlanViewer plan={plan} profile={profile} generating={generating} onGenerate={generate} onSavePlan={savePlan}
-          onFridgeUpdated={(fi) => setProfile((pr) => ({ ...pr, fridgeItems: fi }))} />}
+        {tab === "plan" && <MealPlanViewer plan={plan} profile={profile} generating={generating} onGenerate={generate} onSavePlan={savePlan} />}
         {tab === "summary" && <SummaryPanel />}
-        {tab === "fridge" && <FridgePanel profile={profile} generating={generating} onSaved={(pr) => setProfile(pr)} onGenerate={() => { setTab("plan"); generate(); }} />}
         {tab === "shopping" && <ShoppingListPanel profile={profile} onProfile={setProfile} />}
         {tab === "recipes" && <RecipesPanel />}
         {tab === "profile" && profile && <ProfilePanel profile={profile} onSaved={(pr) => { setProfile(pr); loadStatuses(); }} />}
