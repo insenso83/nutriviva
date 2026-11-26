@@ -447,6 +447,155 @@ const buildPlanFromProfile = (profile = {}) => {
 
 const defaultPlan = buildPlanFromProfile({});
 
+// --- Bilanciamento e calcolo macro/calorie per ingredienti ---
+const FOOD_PROFILES = [
+  { match: ["burro d'arachidi", "burro arachidi", "peanut butter"], p: 25, c: 20, f: 50, defaultGrams: 15 },
+  { match: ["olio", "evo", "burro"], p: 0, c: 0, f: 92, defaultGrams: 10 },
+  { match: ["mandorle", "noci", "nocciole", "anacardi", "frutta secca", "pistacchi"], p: 20, c: 16, f: 54, defaultGrams: 20 },
+  { match: ["cioccolato", "fondente", "cacao"], p: 10, c: 35, f: 42, defaultGrams: 15 },
+  { match: ["whey", "proteine in polvere", "caseine", "proteina"], p: 78, c: 7, f: 6, defaultGrams: 30 },
+  { match: ["albume", "albumi"], p: 11, c: 0.7, f: 0.2, defaultGrams: 150 },
+  { match: ["uovo", "uova"], p: 12.5, c: 1, f: 10, defaultGrams: 60 },
+  { match: ["yogurt greco", "greco"], p: 10, c: 4, f: 1, defaultGrams: 170 },
+  { match: ["fiocchi di latte", "quark", "ricotta", "fiocchi"], p: 11, c: 4, f: 4, defaultGrams: 150 },
+  { match: ["mozzarella", "feta", "formaggio", "parmigiano"], p: 20, c: 2, f: 22, defaultGrams: 80 },
+  { match: ["latte", "bevanda vegetale", "latte di mandorla"], p: 3.4, c: 4.8, f: 1.5, defaultGrams: 200 },
+  { match: ["avena", "fiocchi d'avena", "farina d'avena"], p: 13, c: 60, f: 7, defaultGrams: 60 },
+  { match: ["riso", "basmati", "pasta", "gnocchi", "farro", "orzo", "couscous"], p: 8, c: 72, f: 1.5, defaultGrams: 80 },
+  { match: ["pane", "fette biscottate", "gallette", "crackers", "cereali"], p: 9, c: 65, f: 4, defaultGrams: 50 },
+  { match: ["pollo", "tacchino", "petto di pollo", "fesa"], p: 22, c: 0, f: 2.5, defaultGrams: 150 },
+  { match: ["manzo", "hamburger", "bovino", "vitello", "maiale"], p: 21, c: 0, f: 10, defaultGrams: 150 },
+  { match: ["salmone", "tonno", "merluzzo", "orata", "sgombro", "pesce"], p: 21, c: 0, f: 7, defaultGrams: 150 },
+  { match: ["fagioli", "lenticchie", "ceci", "piselli", "legumi"], p: 7, c: 18, f: 1, defaultGrams: 120 },
+  { match: ["banana", "mela", "pera", "frutti di bosco", "fragole", "arancia", "frutta"], p: 0.7, c: 13, f: 0.3, defaultGrams: 150 },
+  { match: ["avocado"], p: 2, c: 8, f: 15, defaultGrams: 70 },
+  { match: ["zucchine", "spinaci", "broccoli", "carciofi", "pomodori", "cetrioli", "insalata", "verdura", "verdure"], p: 1.5, c: 4, f: 0.3, defaultGrams: 150 },
+];
+
+const round1 = (n) => Math.round((Number(n) || 0) * 10) / 10;
+
+const parseIngredientEntry = (rawEntry) => {
+  const text = String(rawEntry || "").trim();
+  if (!text) return null;
+
+  // Cerca quantità iniziale o presente nel testo, es. "250g albume", "70 g fiocchi d'avena", "2 uova"
+  const qtyMatch = text.match(/(\d+(?:[.,]\d+)?)\s*(kg|g|gr|grammi|ml|l)?/i);
+  let grams = null;
+  let hasExplicitQty = false;
+
+  if (qtyMatch) {
+    hasExplicitQty = true;
+    const val = parseFloat(qtyMatch[1].replace(",", "."));
+    const unit = (qtyMatch[2] || "").toLowerCase();
+    if (!Number.isNaN(val)) {
+      if (unit === "kg" || unit === "l") {
+        grams = val * 1000;
+      } else {
+        grams = val;
+      }
+    }
+  }
+
+  const lower = text.toLowerCase();
+  const profileHit = FOOD_PROFILES.find((fp) =>
+    fp.match.some((m) => lower.includes(m))
+  );
+
+  // Pulisce il nome dell'ingrediente per usarlo nel titolo o formattarlo
+  const cleanedName = text
+    .replace(/^\d+(?:[.,]\d+)?\s*(kg|g|gr|grammi|ml|l)?\s*/i, "")
+    .replace(/\s*\d+(?:[.,]\d+)?\s*(kg|g|gr|grammi|ml|l)\s*/i, " ")
+    .trim() || text.trim();
+
+  if (!hasExplicitQty || grams === null) {
+    if (profileHit) {
+      // Se l'utente scrive "2 uova" senza "g", moltiplica per ~60g a uovo
+      if (/\buov[ao]\b/i.test(lower) && qtyMatch) {
+        const count = Math.max(1, Math.min(8, parseFloat(qtyMatch[1].replace(",", ".")) || 1));
+        grams = count * 60;
+      } else {
+        grams = profileHit.defaultGrams;
+      }
+    } else {
+      grams = 80;
+    }
+  }
+
+  const formattedItem = hasExplicitQty
+    ? text.replace(/(\d+(?:[.,]\d+)?)\s*(g|gr|grammi)\b/i, (_, n) => `${n} g`)
+    : `${Math.round(grams)} g ${cleanedName}`;
+
+  const per100 = profileHit || { p: 6, c: 15, f: 3 };
+  const factor = grams / 100;
+  const protein = round1(per100.p * factor);
+  const carbs = round1(per100.c * factor);
+  const fats = round1(per100.f * factor);
+  const calories = Math.round(protein * 4 + carbs * 4 + fats * 9);
+
+  return {
+    raw: text,
+    name: cleanedName,
+    grams: Math.round(grams),
+    formattedItem,
+    calories,
+    protein,
+    carbs,
+    fats,
+  };
+};
+
+const computeMealFromItems = (items = []) => {
+  const parsed = items.map(parseIngredientEntry).filter(Boolean);
+  const totals = parsed.reduce(
+    (acc, p) => {
+      acc.protein = round1(acc.protein + p.protein);
+      acc.carbs = round1(acc.carbs + p.carbs);
+      acc.fats = round1(acc.fats + p.fats);
+      acc.calories += p.calories;
+      return acc;
+    },
+    { calories: 0, protein: 0, carbs: 0, fats: 0 }
+  );
+
+  // Assicura che le calorie siano coerenti con i macro calcolati
+  if (totals.calories === 0 && (totals.protein || totals.carbs || totals.fats)) {
+    totals.calories = Math.round(
+      totals.protein * 4 + totals.carbs * 4 + totals.fats * 9
+    );
+  }
+
+  return {
+    parsed,
+    formattedItems: parsed.map((p) => p.formattedItem),
+    ...totals,
+  };
+};
+
+const updateMealInSavedPlan = (ctx, day, mealKey, nextMeal) => {
+  const savedPlan = readUserJson(ctx, "_plan");
+  if (!savedPlan || !Array.isArray(savedPlan.days)) return null;
+
+  const updatedDays = savedPlan.days.map((d) => {
+    if (d.day !== day) return d;
+    const updatedMeals = (d.meals || []).map((m) =>
+      m.key === mealKey ? nextMeal : m
+    );
+    const newDayTotal = updatedMeals.reduce(
+      (sum, m) => sum + (Number(m?.calories) || 0),
+      0
+    );
+    return {
+      ...d,
+      meals: updatedMeals,
+      totalCalories: newDayTotal,
+    };
+  });
+
+  const updatedPlan = { ...savedPlan, days: updatedDays };
+  writeUserJson(ctx, "_plan", updatedPlan);
+  return updatedPlan;
+};
+
 const shoppingPools = [
   [
     {
@@ -822,78 +971,94 @@ export const api = {
     }
 
     if (url.includes("/plan/custom-meal")) {
-      const { day, mealKey, ingredients = "", currentMeal = {}, onlyThese = false } = body;
-      const rawIngs = String(ingredients)
+      const {
+        day,
+        mealKey,
+        ingredients = "",
+        currentMeal = {},
+        onlyThese = false,
+      } = body;
+
+      const rawSegments = String(ingredients)
         .split(/[,;\n+]+|\be\b/i)
         .map((s) => s.trim())
         .filter(Boolean);
 
-      const baseItems = onlyThese ? [] : [...(currentMeal.items || [])];
-      const addedItems = rawIngs.map((ing) =>
-        /\d/.test(ing) ? ing : `100 g ${ing}`
-      );
-      const mergedItems = [...baseItems, ...addedItems];
+      const parsedNew = rawSegments.map(parseIngredientEntry).filter(Boolean);
+      const newFormatted = parsedNew.map((p) => p.formattedItem);
+      const newNames = parsedNew.map((p) => p.name);
 
+      const existingItems = onlyThese ? [] : [...(currentMeal.items || [])];
+      const combinedItems = [...existingItems, ...newFormatted];
+      const calc = computeMealFromItems(combinedItems);
+
+      const titleText = newNames.join(", ");
       const customMeal = {
         ...currentMeal,
         key: mealKey || currentMeal.key,
         title: onlyThese
-          ? `Pasto con ${rawIngs.join(", ")}`
-          : `${currentMeal.title || "Pasto"} + ${rawIngs.join(", ")}`,
-        items: mergedItems.length ? mergedItems : currentMeal.items || [],
+          ? `Pasto con ${titleText}`
+          : `${currentMeal.title || "Pasto"} + ${titleText}`,
+        items: calc.formattedItems,
+        calories: calc.calories,
+        protein: calc.protein,
+        carbs: calc.carbs,
+        fats: calc.fats,
         recipe: onlyThese
-          ? `Prepara il pasto utilizzando esclusivamente: ${rawIngs.join(", ")}.`
-          : currentMeal.recipe || "Prepara il pasto integrando i nuovi ingredienti.",
+          ? `Prepara il pasto usando: ${calc.formattedItems.join(", ")}.`
+          : currentMeal.recipe ||
+            `Prepara il pasto combinando: ${calc.formattedItems.join(", ")}.`,
         custom: true,
-        added: onlyThese ? [] : addedItems,
-        note: onlyThese ? "Composto solo con i tuoi ingredienti" : "Integrato con i tuoi ingredienti",
+        added: onlyThese ? [] : newFormatted,
+        note: onlyThese
+          ? "Porzioni stimate solo con i tuoi ingredienti"
+          : "Porzioni e macro ricalcolati con i tuoi ingredienti",
       };
 
-      const savedPlan = readUserJson(ctx, "_plan");
-      if (savedPlan && Array.isArray(savedPlan.days)) {
-        const updatedDays = savedPlan.days.map((d) => {
-          if (d.day !== day) return d;
-          const oldCal = currentMeal?.calories ?? 0;
-          const newCal = customMeal?.calories ?? oldCal;
-          return {
-            ...d,
-            meals: (d.meals || []).map((m) => (m.key === mealKey ? customMeal : m)),
-            totalCalories: (d.totalCalories ?? 0) - oldCal + newCal,
-          };
-        });
-        writeUserJson(ctx, "_plan", { ...savedPlan, days: updatedDays });
-      }
+      updateMealInSavedPlan(ctx, day, mealKey, customMeal);
 
       return { data: { meal: customMeal } };
     }
 
     if (url.includes("/plan/alternative")) {
-      const { mealKey, currentMeal = {} } = body;
+      const { day, mealKey, currentMeal = {} } = body;
       const altPool = [
         {
           title: "Bowl di fiocchi d'avena, albume e mela",
-          calories: currentMeal.calories || 420,
-          protein: 32,
-          carbs: 48,
+          calories: 440,
+          protein: 33,
+          carbs: 52,
           fats: 9,
-          items: ["70 g fiocchi d'avena", "150 g albume", "120 g mela", "10 g mandorle"],
-          recipe: "Cuoci avena e albume in padella antiaderente e servi con mela e mandorle.",
+          items: [
+            "70 g fiocchi d'avena",
+            "150 g albume",
+            "120 g mela",
+            "10 g mandorle",
+          ],
+          recipe:
+            "Cuoci avena e albume in padella antiaderente e servi con mela e mandorle.",
         },
         {
           title: "Crepes proteiche con yogurt greco e frutti rossi",
-          calories: currentMeal.calories || 410,
+          calories: 425,
           protein: 34,
-          carbs: 42,
-          fats: 8,
-          items: ["60 g farina d'avena", "120 g albume", "150 g yogurt greco 0%", "100 g frutti di bosco"],
-          recipe: "Prepara le crepes e farcisci con yogurt greco e frutti di bosco.",
+          carbs: 46,
+          fats: 9,
+          items: [
+            "60 g farina d'avena",
+            "120 g albume",
+            "150 g yogurt greco 0%",
+            "100 g frutti di bosco",
+          ],
+          recipe:
+            "Prepara le crepes e farcisci con yogurt greco e frutti di bosco.",
         },
         {
           title: "Pane integrale tostato con uova e avocado",
-          calories: currentMeal.calories || 450,
-          protein: 26,
-          carbs: 44,
-          fats: 16,
+          calories: 480,
+          protein: 25,
+          carbs: 46,
+          fats: 20,
           items: ["90 g pane integrale", "2 uova", "60 g avocado"],
           recipe: "Tosta il pane e accompagna con uova e avocado a fette.",
         },
@@ -902,13 +1067,21 @@ export const api = {
       const picked =
         altPool.find((a) => a.title !== currentMeal.title) || altPool[0];
 
+      const alternativeMeal = {
+        ...currentMeal,
+        ...picked,
+        key: mealKey || currentMeal.key,
+        custom: false,
+      };
+
+      // Salva anche nel piano su localStorage così al refresh non torna indietro
+      if (day && mealKey) {
+        updateMealInSavedPlan(ctx, day, mealKey, alternativeMeal);
+      }
+
       return {
         data: {
-          alternative: {
-            ...currentMeal,
-            ...picked,
-            key: mealKey || currentMeal.key,
-          },
+          alternative: alternativeMeal,
         },
       };
     }
@@ -918,17 +1091,30 @@ export const api = {
       const savedPlan = readUserJson(ctx, "_plan") || buildPlanFromProfile({});
       const updatedDays = (savedPlan.days || []).map((d) => {
         if (d.day !== day) return d;
-        const reducedCal = Math.max(1500, (d.totalCalories || 2350) - 250);
+        const updatedMeals = (d.meals || []).map((m) => {
+          const newCarbs = round1(Math.max(5, (m.carbs || 0) * 0.75));
+          const newProtein = round1(m.protein || 0);
+          const newFats = round1(m.fats || 0);
+          const newCal = Math.max(
+            100,
+            Math.round(newProtein * 4 + newCarbs * 4 + newFats * 9)
+          );
+          return {
+            ...m,
+            carbs: newCarbs,
+            calories: newCal,
+          };
+        });
+        const newTotal = updatedMeals.reduce(
+          (s, m) => s + (Number(m?.calories) || 0),
+          0
+        );
         return {
           ...d,
           dayType: "riposo",
           skippedTraining: true,
-          totalCalories: reducedCal,
-          meals: (d.meals || []).map((m) => ({
-            ...m,
-            calories: Math.max(100, Math.round((m.calories || 0) * 0.9)),
-            carbs: Math.max(5, Math.round((m.carbs || 0) * 0.75)),
-          })),
+          totalCalories: newTotal,
+          meals: updatedMeals,
         };
       });
       const updatedPlan = { ...savedPlan, days: updatedDays };
