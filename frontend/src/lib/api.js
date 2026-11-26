@@ -251,6 +251,7 @@ const defaultProfile = {
   goals: [],
   dietType: "",
   fridgeItems: [],
+  fridgeComplete: false,
   supplements: [],
   dietActive: false,
   dietStartDate: "",
@@ -438,36 +439,6 @@ const extractSelectedDayIndices = (profile = {}) => {
   return Array.from(matchedIndices).sort((a, b) => a - b);
 };
 
-const buildPlanFromProfile = (profile = {}) => {
-  let trainingIndices = extractSelectedDayIndices(profile);
-
-  if (trainingIndices.length === 0) {
-    const freq = String(profile?.trainingFrequency || "").toLowerCase();
-    if (freq.includes("tutti") || freq.includes("7")) {
-      trainingIndices = [0, 1, 2, 3, 4, 5, 6];
-    } else if (freq.includes("5") || freq.includes("6")) {
-      trainingIndices = [0, 1, 2, 4, 5];
-    } else if (freq.includes("3") || freq.includes("4")) {
-      trainingIndices = [0, 2, 4];
-    } else if (freq.includes("1") || freq.includes("2")) {
-      trainingIndices = [0, 3];
-    }
-  }
-
-  return {
-    notes: "Piano settimanale bilanciato per la massa e definizione muscolare.",
-    dailyCalories: 2350,
-    days: DAYS_OF_WEEK.map((dayName, idx) => ({
-      day: dayName,
-      dayType: trainingIndices.includes(idx) ? "allenamento" : "riposo",
-      totalCalories: 2350,
-      meals: createDayMeals(),
-    })),
-  };
-};
-
-const defaultPlan = buildPlanFromProfile({});
-
 // --- Bilanciamento realistico porzioni e macro ---
 const FOOD_PROFILES = [
   { match: ["marmellata", "confettura", "miele", "sciroppo"], p: 0.4, c: 60, f: 0.1, defaultGrams: 25, minGrams: 10, maxGrams: 50 },
@@ -609,6 +580,115 @@ const computeMealFromItems = (items = [], scaleFactor = 1) => {
     ...totals,
   };
 };
+
+const normalizeFridgeItems = (fridgeItems = []) => {
+  if (!Array.isArray(fridgeItems)) return [];
+  return fridgeItems
+    .map((item) => {
+      if (typeof item === "string") return item.trim();
+      if (item && typeof item === "object") {
+        const name = item.name || item.label || item.title || item.item || "";
+        const qty = item.qty || item.grams || item.quantity || "";
+        return qty ? `${qty} ${name}`.trim() : String(name).trim();
+      }
+      return "";
+    })
+    .filter(Boolean);
+};
+
+const buildMealsFromFridge = (fridgeItems = [], dayIndex = 0) => {
+  const normalized = normalizeFridgeItems(fridgeItems);
+  const baseMeals = createDayMeals();
+
+  if (normalized.length === 0) {
+    return baseMeals;
+  }
+
+  return baseMeals.map((meal, mealIdx) => {
+    const picked = [];
+    for (let i = 0; i < normalized.length; i += 1) {
+      const candidate = normalized[(dayIndex + mealIdx + i) % normalized.length];
+      if (!picked.some((p) => canonicalFoodKey(p) === canonicalFoodKey(candidate))) {
+        picked.push(candidate);
+      }
+      if (picked.length >= Math.min(3, normalized.length)) break;
+    }
+
+    const calc = computeMealFromItems(picked, 1);
+    const titleNames = calc.parsed.map((p) => p.name).filter(Boolean);
+
+    return {
+      ...meal,
+      title:
+        titleNames.length > 0
+          ? `${meal.title.split(":")[0]} con ${titleNames.join(", ")}`
+          : meal.title,
+      items: calc.formattedItems.length > 0 ? calc.formattedItems : meal.items,
+      calories: calc.calories > 0 ? calc.calories : meal.calories,
+      protein: calc.protein,
+      carbs: calc.carbs,
+      fats: calc.fats,
+      fromFridge: true,
+      recipe: `Pasto costruito dagli ingredienti del frigo: ${calc.formattedItems.join(", ")}.`,
+    };
+  });
+};
+
+const buildPlanFromProfile = (profile = {}, options = {}) => {
+  let trainingIndices = extractSelectedDayIndices(profile);
+
+  if (trainingIndices.length === 0) {
+    const freq = String(profile?.trainingFrequency || "").toLowerCase();
+    if (freq.includes("tutti") || freq.includes("7")) {
+      trainingIndices = [0, 1, 2, 3, 4, 5, 6];
+    } else if (freq.includes("5") || freq.includes("6")) {
+      trainingIndices = [0, 1, 2, 4, 5];
+    } else if (freq.includes("3") || freq.includes("4")) {
+      trainingIndices = [0, 2, 4];
+    } else if (freq.includes("1") || freq.includes("2")) {
+      trainingIndices = [0, 3];
+    }
+  }
+
+  const shouldUseFridge =
+    Boolean(options?.fromFridge) &&
+    Boolean(profile?.fridgeComplete) &&
+    normalizeFridgeItems(profile?.fridgeItems).length > 0;
+
+  const days = DAYS_OF_WEEK.map((dayName, idx) => {
+    const meals = shouldUseFridge
+      ? buildMealsFromFridge(profile.fridgeItems, idx)
+      : createDayMeals();
+    const dayCalories = meals.reduce(
+      (sum, m) => sum + (Number(m?.calories) || 0),
+      0
+    );
+
+    return {
+      day: dayName,
+      dayType: trainingIndices.includes(idx) ? "allenamento" : "riposo",
+      totalCalories: dayCalories || 2350,
+      meals,
+    };
+  });
+
+  const avgDailyCalories =
+    Math.round(
+      days.reduce((sum, d) => sum + (Number(d.totalCalories) || 0), 0) /
+        days.length
+    ) || 2350;
+
+  return {
+    notes: shouldUseFridge
+      ? "Piano settimanale aggiornato in base agli ingredienti del frigo."
+      : "Piano settimanale bilanciato per la massa e definizione muscolare.",
+    dailyCalories: avgDailyCalories,
+    generatedFromFridge: shouldUseFridge,
+    days,
+  };
+};
+
+const defaultPlan = buildPlanFromProfile({});
 
 const updateMealInSavedPlan = (ctx, day, mealKey, nextMeal) => {
   const savedPlan = readUserJson(ctx, "_plan");
@@ -806,10 +886,14 @@ export const api = {
 
     if (url.includes("/profile")) {
       const saved = readUserJson(ctx, "_profile");
-      const base = saved || defaultProfile;
+      const base = { ...defaultProfile, ...(saved || {}) };
+      const normalizedFridge = normalizeFridgeItems(base.fridgeItems);
       return {
         data: {
           ...base,
+          fridgeItems: normalizedFridge,
+          fridgeComplete:
+            Boolean(base.fridgeComplete) && normalizedFridge.length > 0,
           id: ctx.user?.id || base.id,
           email: ctx.user?.email || base.email,
           name: ctx.user?.user_metadata?.name || base.name,
@@ -992,19 +1076,68 @@ export const api = {
 
     const ctx = await getStorageContexts();
 
-    if (url.includes("/profile")) {
+    if (url.includes("/fridge/complete") || url.includes("/fridge/status")) {
       const existing = readUserJson(ctx, "_profile") || {};
+      const nextItems = Array.isArray(body?.fridgeItems)
+        ? normalizeFridgeItems(body.fridgeItems)
+        : normalizeFridgeItems(existing.fridgeItems);
+      const isComplete =
+        typeof body?.fridgeComplete === "boolean"
+          ? body.fridgeComplete && nextItems.length > 0
+          : nextItems.length > 0;
+
       const updated = {
         ...defaultProfile,
         ...existing,
         ...body,
+        fridgeItems: nextItems,
+        fridgeComplete: isComplete,
+      };
+      writeUserJson(ctx, "_profile", updated);
+      return {
+        data: {
+          fridgeItems: updated.fridgeItems,
+          fridgeComplete: updated.fridgeComplete,
+          canGenerateFromFridge: updated.fridgeComplete,
+          profile: updated,
+        },
+      };
+    }
+
+    if (url.includes("/profile")) {
+      const existing = readUserJson(ctx, "_profile") || {};
+      const hasFridgeItemsInBody = Array.isArray(body?.fridgeItems);
+      const nextFridgeItems = hasFridgeItemsInBody
+        ? normalizeFridgeItems(body.fridgeItems)
+        : normalizeFridgeItems(existing.fridgeItems);
+
+      let nextFridgeComplete =
+        typeof body?.fridgeComplete === "boolean"
+          ? body.fridgeComplete && nextFridgeItems.length > 0
+          : Boolean(existing.fridgeComplete) && nextFridgeItems.length > 0;
+
+      if (hasFridgeItemsInBody && typeof body?.fridgeComplete !== "boolean") {
+        nextFridgeComplete = false;
+      }
+
+      const updated = {
+        ...defaultProfile,
+        ...existing,
+        ...body,
+        fridgeItems: nextFridgeItems,
+        fridgeComplete: nextFridgeComplete,
         completed: true,
         onboarding_completed: true,
       };
       writeUserJson(ctx, "_profile", updated);
 
-      const generatedPlan = buildPlanFromProfile(updated);
-      writeUserJson(ctx, "_plan", generatedPlan);
+      const existingPlan = readUserJson(ctx, "_plan");
+      if (!existingPlan || body?.regeneratePlan === true) {
+        const generatedPlan = buildPlanFromProfile(updated, {
+          fromFridge: Boolean(body?.fromFridge) && updated.fridgeComplete,
+        });
+        writeUserJson(ctx, "_plan", generatedPlan);
+      }
 
       return { data: updated };
     }
@@ -1202,8 +1335,57 @@ export const api = {
     }
 
     if (url.includes("/plan/generate") || url.includes("/plan")) {
-      const profile = readUserJson(ctx, "_profile") || {};
-      const generatedPlan = body?.days ? body : buildPlanFromProfile(profile);
+      if (body?.days) {
+        writeUserJson(ctx, "_plan", body);
+        return { data: { status: "ready", plan: body } };
+      }
+
+      const savedProfile = readUserJson(ctx, "_profile") || {};
+      const bodyFridgeItems = Array.isArray(body?.fridgeItems)
+        ? normalizeFridgeItems(body.fridgeItems)
+        : null;
+      const effectiveFridgeItems =
+        bodyFridgeItems || normalizeFridgeItems(savedProfile.fridgeItems);
+      const isFridgeComplete =
+        typeof body?.fridgeComplete === "boolean"
+          ? body.fridgeComplete && effectiveFridgeItems.length > 0
+          : Boolean(savedProfile.fridgeComplete) &&
+            effectiveFridgeItems.length > 0;
+
+      const wantsFridgePlan =
+        Boolean(body?.fromFridge) || Boolean(body?.useFridge);
+
+      if (wantsFridgePlan && !isFridgeComplete) {
+        throw new apiError(
+          "Completa prima il frigo per generare i pasti in base agli ingredienti disponibili.",
+          400
+        );
+      }
+
+      const mergedProfile = {
+        ...defaultProfile,
+        ...savedProfile,
+        fridgeItems: effectiveFridgeItems,
+        fridgeComplete: isFridgeComplete,
+      };
+
+      if (bodyFridgeItems || typeof body?.fridgeComplete === "boolean") {
+        writeUserJson(ctx, "_profile", mergedProfile);
+      }
+
+      const existingPlan = readUserJson(ctx, "_plan");
+      if (
+        !wantsFridgePlan &&
+        !body?.forceRegenerate &&
+        existingPlan &&
+        Array.isArray(existingPlan.days)
+      ) {
+        return { data: { status: "ready", plan: existingPlan } };
+      }
+
+      const generatedPlan = buildPlanFromProfile(mergedProfile, {
+        fromFridge: wantsFridgePlan,
+      });
       writeUserJson(ctx, "_plan", generatedPlan);
       return { data: { status: "ready", plan: generatedPlan } };
     }
