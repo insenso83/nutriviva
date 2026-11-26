@@ -5,14 +5,9 @@ const AuthCtx = createContext(null);
 export const useAuth = () => useContext(AuthCtx);
 
 const clearLocalAppData = () => {
-  const keysToRemove = [];
-  for (let i = 0; i < localStorage.length; i += 1) {
-    const key = localStorage.key(i);
-    if (key && key.startsWith("nv_")) {
-      keysToRemove.push(key);
-    }
-  }
-  keysToRemove.forEach((key) => localStorage.removeItem(key));
+  try {
+    localStorage.removeItem("nv_local_auth_session");
+  } catch {}
 };
 
 const mapSessionUser = (sessionUser) => {
@@ -65,12 +60,13 @@ export function AuthProvider({ children }) {
     };
   }, []);
 
-  const afterAuth = (data) => {
-    if (data?.id || data?.email) {
+  const afterAuth = (payload) => {
+    const authUser = payload?.user || payload;
+    if (authUser?.id || authUser?.email) {
       setUser({
-        id: data.id,
-        email: data.email,
-        name: data.name || data.email?.split("@")[0] || "Utente",
+        id: authUser.id,
+        email: authUser.email,
+        name: authUser.name || authUser.email?.split("@")[0] || "Utente",
       });
     } else {
       setUser(false);
@@ -94,10 +90,11 @@ export function AuthProvider({ children }) {
       email: cleanEmail,
       password,
     });
-    if (!data?.id && !data?.email) {
+    const authUser = data?.user || data;
+    if (!authUser?.id && !authUser?.email) {
       throw new Error("Registrazione non completata su Supabase");
     }
-    afterAuth(data);
+    afterAuth(authUser);
   };
 
   const logout = async () => {

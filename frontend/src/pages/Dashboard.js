@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { Leaf, LogOut, UtensilsCrossed, Scale, Smile, Pill, RefreshCw, CalendarDays, Refrigerator, ShoppingCart, CookingPot, Droplet, Camera, UserCog, BarChart3 } from "lucide-react";
-import { api, apiError } from "@/lib/api";
+import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import MealPlanViewer from "@/components/MealPlanViewer";
@@ -82,7 +82,7 @@ export default function Dashboard() {
       setTimeout(poll, 4000);
     } catch (err) {
       setGenerating(false);
-      toast.error(apiError(err.response?.data?.detail) || "Errore nella generazione");
+      toast.error(err?.response?.data?.detail || err?.message || "Errore nella generazione");
     }
   }, []);
 

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { Leaf, ArrowRight, Plus, X, AlertTriangle, Check } from "lucide-react";
-import { api, apiError } from "@/lib/api";
+import { api } from "@/lib/api";
 import {
   SEXES, JOB_TYPES, TRAINING_TYPES, TRAINING_FREQ, GOALS, DIETS, SUPPLEMENTS, DAYS, MEALS,
 } from "@/lib/constants";
@@ -58,7 +58,7 @@ export default function OnboardingPage() {
       toast.success("Profilo salvato! Genero il tuo piano…");
       nav("/app?generate=1");
     } catch (err) {
-      toast.error(apiError(err.response?.data?.detail) || err.message);
+      toast.error(err?.response?.data?.detail || err?.message || "Errore nel salvataggio del profilo");
     } finally { setSaving(false); }
   };
 
