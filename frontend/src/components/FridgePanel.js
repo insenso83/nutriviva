@@ -8,6 +8,7 @@ import {
   ChefHat,
   ScanText,
   CheckCircle2,
+  Sparkles,
 } from "lucide-react";
 import LabelScanner from "@/components/LabelScanner";
 import { api, apiError } from "@/lib/api";
@@ -28,13 +29,14 @@ const normalizeFridgeItems = (raw) => {
     .filter((str) => str.trim() !== "");
 };
 
-export default function FridgePanel({ profile, onSaved }) {
+export default function FridgePanel({ profile, onSaved, onGenerate, generating }) {
   const [items, setItems] = useState(() => normalizeFridgeItems(profile?.fridgeItems));
   const [fridgeComplete, setFridgeComplete] = useState(() =>
     Boolean(profile?.fridgeComplete) && normalizeFridgeItems(profile?.fridgeItems).length > 0
   );
   const [confirmingComplete, setConfirmingComplete] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [generatingFromFridge, setGeneratingFromFridge] = useState(false);
   const [warnings, setWarnings] = useState([]);
   const [checking, setChecking] = useState(false);
   const [recipe, setRecipe] = useState(null);
@@ -91,7 +93,7 @@ export default function FridgePanel({ profile, onSaved }) {
       });
       if (data?.profile) onSaved?.(data.profile);
       else if (data && !data.error) onSaved?.(data);
-      toast.success("Prodotto aggiunto al frigo!");
+      toast.success("Prodotto aggiunto al frigo! Conferma 'Frigo completo' per generare.");
     } catch (err) {
       toast.error(apiError(err?.response?.data?.detail || err));
     }
@@ -113,11 +115,49 @@ export default function FridgePanel({ profile, onSaved }) {
       else if (onSaved) {
         onSaved({ ...(profile || {}), fridgeItems: items, fridgeComplete: true });
       }
-      toast.success("Frigo segnato come completo!");
+      toast.success("Frigo completo! Ora puoi generare i pasti dal frigo.");
     } catch (err) {
       toast.error(apiError(err?.response?.data?.detail || err));
     } finally {
       setConfirmingComplete(false);
+    }
+  };
+
+  const handleGenerateFromFridge = async () => {
+    if (!isFridgeReady) {
+      toast.error("Conferma prima 'Frigo completo' per generare i pasti dal frigo.");
+      return;
+    }
+
+    setGeneratingFromFridge(true);
+    try {
+      await api.put("/profile", {
+        ...profile,
+        fridgeItems: items,
+        fridgeComplete: true,
+      });
+
+      const payload = {
+        fromFridge: true,
+        fridgeComplete: true,
+        fridgeItems: items,
+        forceRegenerate: true,
+      };
+
+      const { data } = await api.post("/plan/generate", payload);
+
+      if (onSaved) {
+        onSaved({ ...(profile || {}), fridgeItems: items, fridgeComplete: true });
+      }
+      if (onGenerate) {
+        await onGenerate({ ...payload, plan: data?.plan });
+      }
+
+      toast.success("Pasti generati in base agli ingredienti del frigo!");
+    } catch (err) {
+      toast.error(apiError(err?.response?.data?.detail || err));
+    } finally {
+      setGeneratingFromFridge(false);
     }
   };
 
@@ -175,6 +215,7 @@ export default function FridgePanel({ profile, onSaved }) {
   };
 
   const isFridgeReady = fridgeComplete && items.length > 0;
+  const isBusy = saving || generating || generatingFromFridge;
 
   return (
     <div className="max-w-3xl">
@@ -183,7 +224,7 @@ export default function FridgePanel({ profile, onSaved }) {
         <h2 className="font-heading text-2xl font-bold">Frigo & Dispensa</h2>
       </div>
       <p className="text-muted-foreground mb-5">
-        Gestisci gli ingredienti che hai in casa, segna il frigo come completo o chiedi una ricetta veloce. Il piano alimentare resta stabile finché non lo modifichi tu.
+        Il piano resta stabile di default: quando hai finito di inserire ciò che hai in casa, conferma &ldquo;Frigo completo&rdquo; per attivare la generazione dei pasti dal frigo.
       </p>
 
       <div className="rounded-2xl border border-border bg-card p-6">
@@ -241,8 +282,8 @@ export default function FridgePanel({ profile, onSaved }) {
         <div className="mt-4 flex items-center justify-between gap-3 rounded-xl border border-border/70 bg-muted/30 px-4 py-2.5 text-sm">
           <span className="text-muted-foreground">
             {isFridgeReady
-              ? "Frigo confermato come completo."
-              : "Puoi segnare 'Frigo completo' quando hai finito di inserire gli ingredienti."}
+              ? "Frigo completo: ora puoi generare i pasti in base agli ingredienti nel frigo."
+              : "Conferma 'Frigo completo' quando hai finito per attivare 'Genera pasti dal frigo'."}
           </span>
           <Button
             type="button"
@@ -264,10 +305,11 @@ export default function FridgePanel({ profile, onSaved }) {
 
         <div className="flex flex-wrap gap-3 mt-6">
           <Button
+            type="button"
             variant="outline"
             data-testid="btn-save-fridge"
             onClick={save}
-            disabled={saving}
+            disabled={isBusy}
             className="rounded-full"
           >
             <Save className="w-4 h-4 mr-1.5" />
@@ -275,6 +317,27 @@ export default function FridgePanel({ profile, onSaved }) {
           </Button>
 
           <Button
+            type="button"
+            data-testid="btn-generate-from-fridge"
+            onClick={handleGenerateFromFridge}
+            disabled={isBusy || !isFridgeReady}
+            title={
+              !isFridgeReady
+                ? "Conferma prima 'Frigo completo' per generare i pasti dal frigo"
+                : "Genera i pasti in base agli ingredienti nel frigo"
+            }
+            className="rounded-full bg-primary"
+          >
+            {generatingFromFridge || generating ? (
+              <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
+            ) : (
+              <Sparkles className="w-4 h-4 mr-1.5" />
+            )}
+            Genera pasti dal frigo
+          </Button>
+
+          <Button
+            type="button"
             variant="outline"
             data-testid="btn-fridge-recipe"
             onClick={quickRecipe}
