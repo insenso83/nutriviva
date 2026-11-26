@@ -821,6 +821,155 @@ export const api = {
       return { data: updated };
     }
 
+    if (url.includes("/plan/custom-meal")) {
+      const { day, mealKey, ingredients = "", currentMeal = {}, onlyThese = false } = body;
+      const rawIngs = String(ingredients)
+        .split(/[,;\n+]+|\be\b/i)
+        .map((s) => s.trim())
+        .filter(Boolean);
+
+      const baseItems = onlyThese ? [] : [...(currentMeal.items || [])];
+      const addedItems = rawIngs.map((ing) =>
+        /\d/.test(ing) ? ing : `100 g ${ing}`
+      );
+      const mergedItems = [...baseItems, ...addedItems];
+
+      const customMeal = {
+        ...currentMeal,
+        key: mealKey || currentMeal.key,
+        title: onlyThese
+          ? `Pasto con ${rawIngs.join(", ")}`
+          : `${currentMeal.title || "Pasto"} + ${rawIngs.join(", ")}`,
+        items: mergedItems.length ? mergedItems : currentMeal.items || [],
+        recipe: onlyThese
+          ? `Prepara il pasto utilizzando esclusivamente: ${rawIngs.join(", ")}.`
+          : currentMeal.recipe || "Prepara il pasto integrando i nuovi ingredienti.",
+        custom: true,
+        added: onlyThese ? [] : addedItems,
+        note: onlyThese ? "Composto solo con i tuoi ingredienti" : "Integrato con i tuoi ingredienti",
+      };
+
+      const savedPlan = readUserJson(ctx, "_plan");
+      if (savedPlan && Array.isArray(savedPlan.days)) {
+        const updatedDays = savedPlan.days.map((d) => {
+          if (d.day !== day) return d;
+          const oldCal = currentMeal?.calories ?? 0;
+          const newCal = customMeal?.calories ?? oldCal;
+          return {
+            ...d,
+            meals: (d.meals || []).map((m) => (m.key === mealKey ? customMeal : m)),
+            totalCalories: (d.totalCalories ?? 0) - oldCal + newCal,
+          };
+        });
+        writeUserJson(ctx, "_plan", { ...savedPlan, days: updatedDays });
+      }
+
+      return { data: { meal: customMeal } };
+    }
+
+    if (url.includes("/plan/alternative")) {
+      const { mealKey, currentMeal = {} } = body;
+      const altPool = [
+        {
+          title: "Bowl di fiocchi d'avena, albume e mela",
+          calories: currentMeal.calories || 420,
+          protein: 32,
+          carbs: 48,
+          fats: 9,
+          items: ["70 g fiocchi d'avena", "150 g albume", "120 g mela", "10 g mandorle"],
+          recipe: "Cuoci avena e albume in padella antiaderente e servi con mela e mandorle.",
+        },
+        {
+          title: "Crepes proteiche con yogurt greco e frutti rossi",
+          calories: currentMeal.calories || 410,
+          protein: 34,
+          carbs: 42,
+          fats: 8,
+          items: ["60 g farina d'avena", "120 g albume", "150 g yogurt greco 0%", "100 g frutti di bosco"],
+          recipe: "Prepara le crepes e farcisci con yogurt greco e frutti di bosco.",
+        },
+        {
+          title: "Pane integrale tostato con uova e avocado",
+          calories: currentMeal.calories || 450,
+          protein: 26,
+          carbs: 44,
+          fats: 16,
+          items: ["90 g pane integrale", "2 uova", "60 g avocado"],
+          recipe: "Tosta il pane e accompagna con uova e avocado a fette.",
+        },
+      ];
+
+      const picked =
+        altPool.find((a) => a.title !== currentMeal.title) || altPool[0];
+
+      return {
+        data: {
+          alternative: {
+            ...currentMeal,
+            ...picked,
+            key: mealKey || currentMeal.key,
+          },
+        },
+      };
+    }
+
+    if (url.includes("/plan/rest-day")) {
+      const { day } = body;
+      const savedPlan = readUserJson(ctx, "_plan") || buildPlanFromProfile({});
+      const updatedDays = (savedPlan.days || []).map((d) => {
+        if (d.day !== day) return d;
+        const reducedCal = Math.max(1500, (d.totalCalories || 2350) - 250);
+        return {
+          ...d,
+          dayType: "riposo",
+          skippedTraining: true,
+          totalCalories: reducedCal,
+          meals: (d.meals || []).map((m) => ({
+            ...m,
+            calories: Math.max(100, Math.round((m.calories || 0) * 0.9)),
+            carbs: Math.max(5, Math.round((m.carbs || 0) * 0.75)),
+          })),
+        };
+      });
+      const updatedPlan = { ...savedPlan, days: updatedDays };
+      writeUserJson(ctx, "_plan", updatedPlan);
+      return {
+        data: {
+          day: updatedDays.find((d) => d.day === day),
+          note: "Giornata adattata a riposo.",
+        },
+      };
+    }
+
+    if (url.includes("/plan/eat-out")) {
+      const { day, mealKey, description } = body;
+      const savedPlan = readUserJson(ctx, "_plan") || buildPlanFromProfile({});
+      const updatedDays = (savedPlan.days || []).map((d) => {
+        if (d.day !== day) return d;
+        return {
+          ...d,
+          meals: (d.meals || []).map((m) =>
+            m.key === mealKey
+              ? {
+                  ...m,
+                  eatOut: true,
+                  rebalanced: true,
+                  title: description || "Pasto fuori casa",
+                }
+              : m
+          ),
+        };
+      });
+      const updatedPlan = { ...savedPlan, days: updatedDays };
+      writeUserJson(ctx, "_plan", updatedPlan);
+      return {
+        data: {
+          day: updatedDays.find((d) => d.day === day),
+          note: "Pasto fuori casa registrato.",
+        },
+      };
+    }
+
     if (url.includes("/plan/generate") || url.includes("/plan")) {
       const profile = readUserJson(ctx, "_profile") || {};
       const generatedPlan = body?.days ? body : buildPlanFromProfile(profile);
