@@ -11,7 +11,7 @@ const clearLocalAppData = () => {
 };
 
 const mapSessionUser = (sessionUser) => {
-  if (!sessionUser) return false;
+  if (!sessionUser) return null;
   return {
     id: sessionUser.id,
     email: sessionUser.email,
@@ -46,11 +46,12 @@ export function AuthProvider({ children }) {
         if (!active) return;
         if (session?.user) {
           setUser(mapSessionUser(session.user));
+          setReady(true);
         } else if (event === "SIGNED_OUT") {
           clearLocalAppData();
           setUser(false);
+          setReady(true);
         }
-        setReady(true);
       }
     );
 
