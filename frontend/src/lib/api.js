@@ -589,31 +589,6 @@ const computeMealFromItems = (items = [], scaleFactor = 1) => {
   };
 };
 
-const mergeItemsWithoutDuplicates = (existingItems = [], incomingRawItems = []) => {
-  const existingParsed = existingItems.map((i) => parseIngredientEntry(i, 1)).filter(Boolean);
-  const incomingParsed = incomingRawItems.map((i) => parseIngredientEntry(i, 1)).filter(Boolean);
-
-  const mergedMap = new Map();
-  for (const item of existingParsed) {
-    mergedMap.set(item.foodKey, item.formattedItem);
-  }
-
-  const addedOrUpdated = [];
-  for (const item of incomingParsed) {
-    // Se l'ingrediente è già presente nel pasto e l'utente ha specificato una quantità esplicita, aggiorna quel valore;
-    // altrimenti lo aggiunge solo se non c'è già con lo stesso profilo.
-    if (!mergedMap.has(item.foodKey) || item.hasExplicitQty) {
-      mergedMap.set(item.foodKey, item.formattedItem);
-      addedOrUpdated.push(item.formattedItem);
-    }
-  }
-
-  return {
-    mergedItems: Array.from(mergedMap.values()),
-    addedOrUpdated,
-  };
-};
-
 const updateMealInSavedPlan = (ctx, day, mealKey, nextMeal) => {
   const savedPlan = readUserJson(ctx, "_plan");
   if (!savedPlan || !Array.isArray(savedPlan.days)) return null;
@@ -1027,36 +1002,23 @@ export const api = {
         .map((s) => s.trim())
         .filter(Boolean);
 
-      const targetCalories = Number(currentMeal?.calories) || 0;
-
-      let workingItems = [];
-      let addedSummary = [];
-
-      if (onlyThese) {
-        const soloCalc = computeMealFromItems(rawSegments, 1);
-        let scale = 1;
-        // Se l'utente non ha scritto grammature su tutto e il totale è molto basso rispetto al pasto, calibra leggermente
-        if (targetCalories > 0 && soloCalc.calories > 0 && soloCalc.calories < targetCalories * 0.55) {
-          scale = Math.min(1.4, Math.max(0.8, targetCalories / soloCalc.calories));
-        }
-        const scaledCalc = computeMealFromItems(rawSegments, scale);
-        workingItems = scaledCalc.formattedItems;
-      } else {
-        const { mergedItems, addedOrUpdated } = mergeItemsWithoutDuplicates(
-          currentMeal.items || [],
-          rawSegments
-        );
-        addedSummary = addedOrUpdated;
-
-        let baseCalc = computeMealFromItems(mergedItems, 1);
-        if (targetCalories > 0 && baseCalc.calories > targetCalories * 1.25) {
-          const ratio = Math.max(0.65, targetCalories / baseCalc.calories);
-          baseCalc = computeMealFromItems(mergedItems, ratio);
-        }
-        workingItems = baseCalc.formattedItems;
+      if (rawSegments.length === 0) {
+        return { data: { meal: currentMeal } };
       }
 
-      const finalCalc = computeMealFromItems(workingItems, 1);
+      const targetCalories = Number(currentMeal?.calories) || 0;
+      const soloCalc = computeMealFromItems(rawSegments, 1);
+
+      let scale = 1;
+      if (
+        targetCalories > 0 &&
+        soloCalc.calories > 0 &&
+        soloCalc.calories < targetCalories * 0.55
+      ) {
+        scale = Math.min(1.4, Math.max(0.8, targetCalories / soloCalc.calories));
+      }
+
+      const finalCalc = computeMealFromItems(rawSegments, scale);
       const parsedInputNames = rawSegments
         .map((s) => parseIngredientEntry(s, 1)?.name)
         .filter(Boolean);
@@ -1064,23 +1026,18 @@ export const api = {
       const customMeal = {
         ...currentMeal,
         key: mealKey || currentMeal.key,
-        title: onlyThese
-          ? `Pasto con ${parsedInputNames.join(", ")}`
-          : `${currentMeal.title || "Pasto"} (${parsedInputNames.join(", ")})`,
+        title: `Pasto con ${parsedInputNames.join(", ")}`,
         items: finalCalc.formattedItems,
         calories: finalCalc.calories,
         protein: finalCalc.protein,
         carbs: finalCalc.carbs,
         fats: finalCalc.fats,
-        recipe: onlyThese
-          ? `Prepara il pasto usando: ${finalCalc.formattedItems.join(", ")}.`
-          : currentMeal.recipe ||
-            `Prepara il pasto combinando: ${finalCalc.formattedItems.join(", ")}.`,
+        recipe: `Prepara il pasto usando: ${finalCalc.formattedItems.join(", ")}.`,
         custom: true,
-        added: onlyThese ? [] : addedSummary,
+        added: [],
         note: onlyThese
           ? "Porzioni bilanciate solo con i tuoi ingredienti"
-          : "Pasto aggiornato senza duplicati e macro ricalcolati",
+          : "Pasto bilanciato con i tuoi ingredienti",
       };
 
       updateMealInSavedPlan(ctx, day, mealKey, customMeal);
